@@ -21,15 +21,16 @@ def create_app() -> Flask:
     # Percorso del database: per default è nella stessa directory del file app
     app.config.setdefault('DATABASE', str(Path(app.root_path) / 'database.db'))
 
-    # Registra le funzioni per l'inizializzazione e chiusura del DB
-    @app.before_first_request
-    def _initialize_database():
-        # Crea le tabelle se non esistono già
-        init_db()
-
+    # Chiude la connessione al database alla fine di ogni richiesta
     @app.teardown_appcontext
     def _close_database(exception: Optional[BaseException] = None):
-        close_db(exception)
+       close_db(exception)
+
+    # Inizializza il database una volta all’avvio utilizzando il contesto dell’applicazione.
+    # In Flask 3.x il decorator before_first_request non è più disponibile.
+    with app.app_context():
+    init_db()
+
 
     # Rotta principale: mostra un riepilogo dei conteggi
     @app.route('/')
