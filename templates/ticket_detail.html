@@ -2,15 +2,6 @@
 {% set ticket_number = '%04d'|format(ticket['id']) %}
 {% block title %}Ticket #{{ ticket_number }}{% endblock %}
 {% block content %}
-{% set ticket_status_labels = {
-    'open': 'Aperto',
-    'in_progress': 'In lavorazione',
-    'closed': 'Chiuso',
-    'Accettazione': 'Accettazione',
-    'Preventivo': 'Preventivo',
-    'Riparato': 'Riparato',
-    'Chiuso': 'Chiuso'
-} %}
 {% set repair_status_labels = {
     'pending': 'In attesa',
     'in_progress': 'In lavorazione',
@@ -22,7 +13,7 @@
         <div><strong>Cliente:</strong> {{ ticket['customer_name'] }}</div>
         <div>
             <strong>Stato:</strong>
-            {% set status_slug = ticket['status']|lower|replace(' ', '-')|replace('_', '-') %}
+            {% set status_slug = ticket['status']|replace('_', '-') %}
             <span class="badge badge-{{ status_slug }}">{{ ticket_status_labels.get(ticket['status'], ticket['status']) }}</span>
         </div>
     </div>
@@ -36,9 +27,9 @@
 <form method="post">
     <label for="status">Aggiorna stato</label>
     <select id="status" name="status">
-        <option value="open" {% if ticket['status'] == 'open' %}selected{% endif %}>Aperto</option>
-        <option value="in_progress" {% if ticket['status'] == 'in_progress' %}selected{% endif %}>In lavorazione</option>
-        <option value="closed" {% if ticket['status'] == 'closed' %}selected{% endif %}>Chiuso</option>
+        {% for value, label in ticket_statuses %}
+        <option value="{{ value }}" {% if ticket['status'] == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
     </select>
     <button type="submit">Aggiorna</button>
 </form>
