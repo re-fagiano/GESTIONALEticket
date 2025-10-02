@@ -30,11 +30,15 @@ DEFAULT_TICKET_STATUS = TICKET_STATUSES[0][0]
 REPAIR_STATUSES = [
     ("accettazione", "Accettazione"),
     ("preventivo", "Preventivo"),
-    ("preventivo_accettato", "Preventivo accettato"),
+    ("preventivo-accettato", "Preventivo accettato"),
     ("pronta", "Pronta"),
     ("riconsegnata", "Riconsegnata"),
 ]
 REPAIR_STATUS_LABELS = {value: label for value, label in REPAIR_STATUSES}
+REPAIR_STATUS_LABELS.update({
+    # Alias per vecchi slugs salvati con underscore.
+    "preventivo_accettato": REPAIR_STATUS_LABELS["preventivo-accettato"],
+})
 REPAIR_STATUS_VALUES = set(REPAIR_STATUS_LABELS)
 DEFAULT_REPAIR_STATUS = REPAIR_STATUSES[0][0]
 
@@ -261,6 +265,7 @@ def create_app() -> Flask:
         return render_template(
             'repairs.html',
             repairs=repairs,
+            repair_statuses=REPAIR_STATUSES,
             repair_status_labels=REPAIR_STATUS_LABELS,
         )
 

@@ -2,11 +2,12 @@
 {% block title %}Riparazioni{% endblock %}
 {% block content %}
 {% set repair_status_labels = repair_status_labels or {} %}
+{% set repair_statuses = repair_statuses or [] %}
 <h2>Riparazioni</h2>
 <div class="status-legend">
-    <span class="badge badge-pending">In attesa</span>
-    <span class="badge badge-in-progress">In lavorazione</span>
-    <span class="badge badge-completed">Completata</span>
+    {% for status_value, status_label in repair_statuses %}
+    <span class="badge badge-{{ status_value }}">{{ status_label }}</span>
+    {% endfor %}
 </div>
 {% if repairs %}
 <table>
@@ -32,7 +33,7 @@
         {% set repair_status_slug = (repair['repair_status'] or '')|lower|replace(' ', '-')|replace('_', '-') %}
         <td>
             {% set status_label = repair_status_labels.get(repair['repair_status'], repair['repair_status'] or 'N/A') %}
-            <span class="badge badge-{{ repair_status_slug if repair_status_slug else 'pending' }}">{{ status_label }}</span>
+            <span class="badge badge-{{ repair_status_slug if repair_status_slug else 'accettazione' }}">{{ status_label }}</span>
         </td>
         <td>{{ repair['date_received'] or '-' }}</td>
         <td>{{ repair['date_repaired'] or '-' }}</td>
