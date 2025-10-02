@@ -12,11 +12,11 @@
         {% endfor %}
     </select>
 
-    <label for="product">Prodotto</label>
-    <input type="text" id="product" name="product">
+    <label for="product">Prodotto *</label>
+    <input type="text" id="product" name="product" required minlength="2">
 
-    <label for="issue_description">Descrizione problema</label>
-    <textarea id="issue_description" name="issue_description" rows="4"></textarea>
+    <label for="issue_description">Descrizione problema *</label>
+    <textarea id="issue_description" name="issue_description" rows="4" required minlength="5"></textarea>
 
     <label for="repair_status">Stato riparazione</label>
     <select id="repair_status" name="repair_status">
