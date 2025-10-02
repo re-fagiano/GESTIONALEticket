@@ -20,7 +20,7 @@
         <td><a href="{{ url_for('ticket_detail', ticket_id=ticket['id']) }}">{{ ticket['id'] }}</a></td>
         <td>{{ ticket['customer_name'] }}</td>
         <td>{{ ticket['subject'] }}</td>
-        <td>{{ ticket_status_labels.get(ticket['status'], ticket['status']) }}</td>
+        <td>{{ get_ticket_status_label(ticket['status']) }}</td>
         <td>{{ ticket['created_at'] }}</td>
     </tr>
     {% endfor %}

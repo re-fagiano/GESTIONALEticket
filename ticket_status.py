@@ -40,6 +40,7 @@ __all__ = [
     "TICKET_STATUS_LABELS",
     "TicketStatusChoice",
     "get_ticket_status_context",
+    "get_ticket_status_label",
     "is_valid_ticket_status",
 ]
 
@@ -52,6 +53,12 @@ def is_valid_ticket_status(status: str) -> bool:
     """Return ``True`` if *status* is one of the allowed ticket states."""
 
     return status in ALLOWED_TICKET_STATUSES
+
+
+def get_ticket_status_label(status: str) -> str:
+    """Return the localized label for *status* or *status* if unknown."""
+
+    return TICKET_STATUS_LABELS.get(status, status)
 
 
 def get_ticket_status_context() -> Mapping[str, object]:
@@ -68,4 +75,5 @@ def get_ticket_status_context() -> Mapping[str, object]:
         "ticket_status_labels": TICKET_STATUS_LABELS,
         "ticket_allowed_statuses": ALLOWED_TICKET_STATUSES,
         "ticket_default_status": DEFAULT_TICKET_STATUS,
+        "get_ticket_status_label": get_ticket_status_label,
     }
