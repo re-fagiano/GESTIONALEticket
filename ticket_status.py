@@ -92,7 +92,12 @@ def normalize_ticket_status(status: str) -> str:
     if lookup_key in ALLOWED_TICKET_STATUSES:
         return lookup_key
 
-    return stripped
+    # Qualsiasi valore sconosciuto viene riportato allo stato di default per
+    # evitare che nel database rimangano stringhe arbitrarie.  In questo modo
+    # l'applicazione mantiene l'invariante per cui ogni ticket ha sempre uno
+    # stato ammesso, anche se in passato veniva utilizzato un valore non più
+    # valido o proveniente da integrazioni esterne.
+    return DEFAULT_TICKET_STATUS
 
 
 def get_ticket_status_context() -> Mapping[str, object]:
