@@ -22,7 +22,11 @@
     {% for repair in repairs %}
     <tr>
         <td>{{ repair['id'] }}</td>
-        <td><a href="{{ url_for('ticket_detail', ticket_id=repair['ticket_id']) }}">{{ '%04d'|format(repair['ticket_id']) }} - {{ repair['ticket_subject'] }}</a></td>
+        <td>
+            <a href="{{ url_for('ticket_detail', ticket_id=repair['ticket_id']) }}">
+                {{ '%04d'|format(repair['ticket_id']) }} - {{ repair['ticket_subject'] }}
+            </a>
+        </td>
         <td>{{ repair['customer_name'] }}</td>
         <td>{{ repair['product'] or '-' }}</td>
         <td>{{ repair['issue_description'] or '-' }}</td>
