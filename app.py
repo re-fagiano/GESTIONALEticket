@@ -8,11 +8,14 @@ funzionalità per la gestione di clienti, ticket e riparazioni.
 
 import os
 
-from flask import Flask, render_template, request, redirect, url_for, flash
+from flask import Flask, render_template, request, redirect, url_for, flash, abort
 from pathlib import Path
 from typing import Optional
 
 from database import get_db, init_db, close_db
+from flask_login import current_user, login_required
+
+from auth import admin_required, bp as auth_bp, login_manager
 
 
 TICKET_STATUSES = ["Accettazione", "Preventivo", "Riparato", "Chiuso"]
@@ -26,6 +29,8 @@ def create_app() -> Flask:
     # Percorso del database: per default è nella stessa directory del file app
     app.config.setdefault('DATABASE', str(Path(app.root_path) / 'database.db'))
 
+    login_manager.init_app(app)
+
     # Chiude la connessione al database alla fine di ogni richiesta
     @app.teardown_appcontext
     def _close_database(exception: Optional[BaseException] = None):
@@ -36,9 +41,12 @@ def create_app() -> Flask:
     with app.app_context():
         init_db()
 
+    app.register_blueprint(auth_bp)
+
 
     # Rotta principale: mostra un riepilogo dei conteggi
     @app.route('/')
+    @login_required
     def index():
         db = get_db()
         ticket_count = db.execute('SELECT COUNT(*) AS count FROM tickets').fetchone()['count']
@@ -49,6 +57,7 @@ def create_app() -> Flask:
 
     # Lista clienti
     @app.route('/customers')
+    @login_required
     def customers():
         db = get_db()
         customers = db.execute('SELECT * FROM customers ORDER BY name').fetchall()
@@ -56,6 +65,7 @@ def create_app() -> Flask:
 
     # Inserimento nuovo cliente
     @app.route('/customers/new', methods=['GET', 'POST'])
+    @admin_required
     def add_customer():
         if request.method == 'POST':
             name = request.form.get('name', '').strip()
@@ -77,6 +87,7 @@ def create_app() -> Flask:
 
     # Lista ticket
     @app.route('/tickets')
+    @login_required
     def tickets():
         db = get_db()
         selected_status = request.args.get('status', '').strip()
@@ -103,6 +114,7 @@ def create_app() -> Flask:
 
     # Inserimento nuovo ticket
     @app.route('/tickets/new', methods=['GET', 'POST'])
+    @admin_required
     def add_ticket():
         db = get_db()
         if request.method == 'POST':
@@ -126,6 +138,7 @@ def create_app() -> Flask:
 
     # Dettaglio ticket e aggiornamento stato
     @app.route('/tickets/<int:ticket_id>', methods=['GET', 'POST'])
+    @login_required
     def ticket_detail(ticket_id: int):
         db = get_db()
         ticket = db.execute(
@@ -137,6 +150,8 @@ def create_app() -> Flask:
             flash('Ticket non trovato.', 'error')
             return redirect(url_for('tickets'))
         if request.method == 'POST':
+            if not getattr(current_user, 'is_admin', False):
+                abort(403)
             new_status = request.form.get('status')
             if new_status:
                 db.execute(
@@ -155,6 +170,7 @@ def create_app() -> Flask:
 
     # Lista delle riparazioni
     @app.route('/repairs')
+    @login_required
     def repairs():
         db = get_db()
         repairs = db.execute(
@@ -168,6 +184,7 @@ def create_app() -> Flask:
 
     # Inserimento nuova riparazione
     @app.route('/repairs/new', methods=['GET', 'POST'])
+    @admin_required
     def add_repair():
         db = get_db()
         if request.method == 'POST':

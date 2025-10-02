@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block title %}Accesso{% endblock %}
+{% block content %}
+<h2>Accedi</h2>
+<form method="post">
+    <label for="username">Nome utente</label>
+    <input type="text" id="username" name="username" required autofocus>
+
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" required>
+
+    <button type="submit">Entra</button>
+</form>
+<p>Non hai un account? <a href="{{ url_for('auth.register') }}">Registrati</a>.</p>
+{% endblock %}
