@@ -6,6 +6,8 @@ connessione al database tramite le funzioni di `database.py` e fornisce
 funzionalità per la gestione di clienti, ticket e riparazioni.
 """
 
+import os
+
 from flask import Flask, render_template, request, redirect, url_for, flash
 from pathlib import Path
 from typing import Optional
@@ -24,12 +26,12 @@ def create_app() -> Flask:
     # Chiude la connessione al database alla fine di ogni richiesta
     @app.teardown_appcontext
     def _close_database(exception: Optional[BaseException] = None):
-       close_db(exception)
+        close_db(exception)
 
     # Inizializza il database una volta all’avvio utilizzando il contesto dell’applicazione.
     # In Flask 3.x il decorator before_first_request non è più disponibile.
     with app.app_context():
-    init_db()
+        init_db()
 
 
     # Rotta principale: mostra un riepilogo dei conteggi
@@ -181,4 +183,8 @@ def create_app() -> Flask:
 if __name__ == '__main__':
     app = create_app()
     # Avvia il server di sviluppo
-    app.run(debug=True)
+    app.run(
+        host='0.0.0.0',
+        port=int(os.environ.get('PORT', 5000)),
+        debug=True,
+    )
