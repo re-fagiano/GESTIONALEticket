@@ -17,7 +17,6 @@ from ticket_status import (
     DEFAULT_TICKET_STATUS,
     get_ticket_status_context,
     is_valid_ticket_status,
-    normalize_ticket_record,
     normalize_ticket_status,
 )
 
@@ -97,7 +96,8 @@ def create_app() -> Flask:
         for row in ticket_rows:
             ticket = dict(row)
             previous_status = ticket.get('status')
-            normalized_status = normalize_ticket_record(ticket)
+            normalized_status = normalize_ticket_status(previous_status)
+            ticket['status'] = normalized_status
             if normalized_status != previous_status:
                 pending_updates.append((normalized_status, ticket['id'], previous_status))
             tickets.append(ticket)
@@ -146,7 +146,8 @@ def create_app() -> Flask:
             return redirect(url_for('tickets'))
         ticket = dict(ticket_row)
         previous_status = ticket.get('status')
-        normalized_status = normalize_ticket_record(ticket)
+        normalized_status = normalize_ticket_status(previous_status)
+        ticket['status'] = normalized_status
         if normalized_status != previous_status:
             db.execute(
                 'UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = ?',

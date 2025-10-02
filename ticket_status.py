@@ -10,7 +10,7 @@ consistent across the code base.
 from __future__ import annotations
 
 from types import MappingProxyType
-from typing import Any, Final, FrozenSet, Mapping, MutableMapping, Tuple
+from typing import Final, FrozenSet, Mapping, Tuple
 
 TicketStatusChoice = Tuple[str, str]
 
@@ -54,7 +54,6 @@ __all__ = [
     "TicketStatusChoice",
     "get_ticket_status_context",
     "get_ticket_status_label",
-    "normalize_ticket_record",
     "normalize_ticket_status",
     "is_valid_ticket_status",
 ]
@@ -94,26 +93,6 @@ def normalize_ticket_status(status: str) -> str:
         return lookup_key
 
     return stripped
-
-
-def normalize_ticket_record(
-    record: MutableMapping[str, Any],
-    *,
-    status_field: str = "status",
-) -> str:
-    """Normalize and enrich a ticket-like mapping with status metadata.
-
-    The *record* is mutated in-place so that the normalized status replaces the
-    original value and the localized label is stored alongside it using the key
-    ``"<status_field>_label"``.  The normalized status is returned for
-    convenience so callers can decide whether persistence updates are needed.
-    """
-
-    current_status = record.get(status_field, DEFAULT_TICKET_STATUS)
-    normalized_status = normalize_ticket_status(current_status)
-    record[status_field] = normalized_status
-    record[f"{status_field}_label"] = get_ticket_status_label(normalized_status)
-    return normalized_status
 
 
 def get_ticket_status_context() -> Mapping[str, object]:
