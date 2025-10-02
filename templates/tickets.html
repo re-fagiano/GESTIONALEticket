@@ -6,8 +6,8 @@
     <label for="status">Stato:</label>
     <select name="status" id="status" onchange="this.form.submit()">
         <option value="" {% if not selected_status %}selected{% endif %}>Tutti</option>
-        {% for status in statuses %}
-        <option value="{{ status }}" {% if status == selected_status %}selected{% endif %}>{{ status }}</option>
+        {% for value, label in status_choices %}
+        <option value="{{ value }}" {% if value == selected_status %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
     </select>
     <noscript><button type="submit">Filtra</button></noscript>
@@ -29,7 +29,7 @@
         <td><a href="{{ url_for('ticket_detail', ticket_id=ticket['id']) }}">{{ '%04d'|format(ticket['id']) }}</a></td>
         <td>
             <div class="ticket-customer">{{ ticket['customer_name'] }}</div>
-            <div class="ticket-status">{{ ticket['status'] }}</div>
+            <div class="ticket-status">{{ status_labels.get(ticket['status'], ticket['status']) }}</div>
         </td>
         <td>{{ ticket['subject'] }}</td>
         <td>{{ ticket['created_at'] }}</td>

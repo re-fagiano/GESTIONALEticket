@@ -26,7 +26,7 @@
         <td>{{ repair['customer_name'] }}</td>
         <td>{{ repair['product'] or '-' }}</td>
         <td>{{ repair['issue_description'] or '-' }}</td>
-        <td>{{ repair['repair_status'] }}</td>
+        <td>{{ repair_status_labels.get(repair['repair_status'], repair['repair_status']) }}</td>
         <td>{{ repair['date_received'] or '-' }}</td>
         <td>{{ repair['date_repaired'] or '-' }}</td>
         <td>{{ repair['date_returned'] or '-' }}</td>

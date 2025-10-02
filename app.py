@@ -17,17 +17,20 @@ from database import get_db, init_db, close_db
 from forms import AddCustomerForm, AddTicketForm, TicketStatusForm, RepairForm
 
 
-TICKET_STATUSES = ["Accettazione", "Preventivo", "Riparato", "Chiuso"]
 TICKET_STATUS_CHOICES = [
     ("open", "Aperto"),
     ("in_progress", "In lavorazione"),
+    ("repaired", "Riparato"),
     ("closed", "Chiuso"),
 ]
+TICKET_STATUS_VALUES = {value for value, _ in TICKET_STATUS_CHOICES}
+TICKET_STATUS_LABELS = dict(TICKET_STATUS_CHOICES)
 REPAIR_STATUS_CHOICES = [
     ("pending", "In attesa"),
     ("in_progress", "In lavorazione"),
     ("completed", "Completata"),
 ]
+REPAIR_STATUS_LABELS = dict(REPAIR_STATUS_CHOICES)
 
 
 csrf = CSRFProtect()
@@ -101,20 +104,21 @@ def create_app() -> Flask:
             'FROM tickets t JOIN customers c ON t.customer_id = c.id '
         )
         params = ()
-        if selected_status and selected_status in TICKET_STATUSES:
+        if selected_status and selected_status in TICKET_STATUS_VALUES:
             query += 'WHERE t.status = ? '
             params = (selected_status,)
         else:
-            selected_status = None
+            selected_status = ''
         query += 'ORDER BY t.created_at DESC'
         tickets = db.execute(query, params).fetchall()
         current_filters = {'status': selected_status} if selected_status else {}
         return render_template(
             'tickets.html',
             tickets=tickets,
-            statuses=TICKET_STATUSES,
+            status_choices=TICKET_STATUS_CHOICES,
             selected_status=selected_status,
             current_filters=current_filters,
+            status_labels=TICKET_STATUS_LABELS,
         )
 
     # Inserimento nuovo ticket
@@ -170,7 +174,14 @@ def create_app() -> Flask:
             'SELECT * FROM repairs WHERE ticket_id = ? ORDER BY id DESC',
             (ticket_id,)
         ).fetchall()
-        return render_template('ticket_detail.html', ticket=ticket, repairs=repairs, form=form)
+        return render_template(
+            'ticket_detail.html',
+            ticket=ticket,
+            repairs=repairs,
+            form=form,
+            status_labels=TICKET_STATUS_LABELS,
+            repair_status_labels=REPAIR_STATUS_LABELS,
+        )
 
     # Lista delle riparazioni
     @app.route('/repairs')
@@ -183,7 +194,11 @@ def create_app() -> Flask:
             'JOIN customers c ON t.customer_id = c.id '
             'ORDER BY r.id DESC'
         ).fetchall()
-        return render_template('repairs.html', repairs=repairs)
+        return render_template(
+            'repairs.html',
+            repairs=repairs,
+            repair_status_labels=REPAIR_STATUS_LABELS,
+        )
 
     # Inserimento nuova riparazione
     @app.route('/repairs/new', methods=['GET', 'POST'])
