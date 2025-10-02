@@ -18,7 +18,14 @@ from flask_login import current_user, login_required
 from auth import admin_required, bp as auth_bp, login_manager
 
 
-TICKET_STATUSES = ["Accettazione", "Preventivo", "Riparato", "Chiuso"]
+TICKET_STATUSES = [
+    ("open", "Aperto"),
+    ("in_progress", "In lavorazione"),
+    ("closed", "Chiuso"),
+]
+TICKET_STATUS_LABELS = {value: label for value, label in TICKET_STATUSES}
+TICKET_STATUS_VALUES = set(TICKET_STATUS_LABELS)
+DEFAULT_TICKET_STATUS = TICKET_STATUSES[0][0]
 
 
 def create_app() -> Flask:
@@ -96,11 +103,12 @@ def create_app() -> Flask:
             'FROM tickets t JOIN customers c ON t.customer_id = c.id '
         )
         params = ()
-        if selected_status and selected_status in TICKET_STATUSES:
-            query += 'WHERE t.status = ? '
-            params = (selected_status,)
-        else:
-            selected_status = None
+        if selected_status:
+            if selected_status in TICKET_STATUS_VALUES:
+                query += 'WHERE t.status = ? '
+                params = (selected_status,)
+            else:
+                selected_status = None
         query += 'ORDER BY t.created_at DESC'
         tickets = db.execute(query, params).fetchall()
         current_filters = {'status': selected_status} if selected_status else {}
@@ -108,6 +116,7 @@ def create_app() -> Flask:
             'tickets.html',
             tickets=tickets,
             statuses=TICKET_STATUSES,
+            ticket_status_labels=TICKET_STATUS_LABELS,
             selected_status=selected_status,
             current_filters=current_filters,
         )
@@ -127,7 +136,7 @@ def create_app() -> Flask:
                 db.execute(
                     'INSERT INTO tickets (customer_id, subject, description, status) '
                     'VALUES (?, ?, ?, ?)',
-                    (customer_id, subject, description or None, 'open')
+                    (customer_id, subject, description or None, DEFAULT_TICKET_STATUS)
                 )
                 db.commit()
                 flash('Ticket creato con successo.', 'success')
@@ -152,8 +161,8 @@ def create_app() -> Flask:
         if request.method == 'POST':
             if not getattr(current_user, 'is_admin', False):
                 abort(403)
-            new_status = request.form.get('status')
-            if new_status:
+            new_status = request.form.get('status', '').strip()
+            if new_status in TICKET_STATUS_VALUES:
                 db.execute(
                     'UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
                     (new_status, ticket_id)
@@ -161,12 +170,20 @@ def create_app() -> Flask:
                 db.commit()
                 flash('Stato del ticket aggiornato.', 'success')
                 return redirect(url_for('ticket_detail', ticket_id=ticket_id))
+            else:
+                flash('Stato del ticket non valido.', 'error')
         # Recupera le riparazioni associate al ticket
         repairs = db.execute(
             'SELECT * FROM repairs WHERE ticket_id = ? ORDER BY id DESC',
             (ticket_id,)
         ).fetchall()
-        return render_template('ticket_detail.html', ticket=ticket, repairs=repairs)
+        return render_template(
+            'ticket_detail.html',
+            ticket=ticket,
+            repairs=repairs,
+            ticket_statuses=TICKET_STATUSES,
+            ticket_status_labels=TICKET_STATUS_LABELS,
+        )
 
     # Lista delle riparazioni
     @app.route('/repairs')
