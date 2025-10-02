@@ -15,8 +15,6 @@ from typing import Optional
 from database import get_db, init_db, close_db
 from ticket_status import (
     DEFAULT_TICKET_STATUS,
-    TICKET_STATUS_CHOICES,
-    TICKET_STATUS_LABELS,
     get_ticket_status_context,
     is_valid_ticket_status,
 )

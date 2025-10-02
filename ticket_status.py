@@ -9,7 +9,8 @@ consistent across the code base.
 
 from __future__ import annotations
 
-from typing import Dict, FrozenSet, Mapping, Tuple
+from types import MappingProxyType
+from typing import Final, FrozenSet, Mapping, Tuple
 
 TicketStatusChoice = Tuple[str, str]
 
@@ -17,18 +18,20 @@ TicketStatusChoice = Tuple[str, str]
 # Public constants
 # ---------------------------------------------------------------------------
 
-TICKET_STATUS_CHOICES: Tuple[TicketStatusChoice, ...] = (
+TICKET_STATUS_CHOICES: Final[Tuple[TicketStatusChoice, ...]] = (
     ("accettazione", "Accettazione"),
     ("preventivo", "Preventivo"),
     ("riparato", "Riparato"),
     ("chiuso", "Chiuso"),
 )
 
-TICKET_STATUS_LABELS: Dict[str, str] = {value: label for value, label in TICKET_STATUS_CHOICES}
+TICKET_STATUS_LABELS: Final[Mapping[str, str]] = MappingProxyType(
+    {value: label for value, label in TICKET_STATUS_CHOICES}
+)
 
-ALLOWED_TICKET_STATUSES: FrozenSet[str] = frozenset(TICKET_STATUS_LABELS)
+ALLOWED_TICKET_STATUSES: Final[FrozenSet[str]] = frozenset(TICKET_STATUS_LABELS)
 
-DEFAULT_TICKET_STATUS: str = "accettazione"
+DEFAULT_TICKET_STATUS: Final[str] = "accettazione"
 
 __all__ = [
     "ALLOWED_TICKET_STATUSES",
