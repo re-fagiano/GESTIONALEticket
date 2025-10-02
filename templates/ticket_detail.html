@@ -2,11 +2,29 @@
 {% set ticket_number = '%04d'|format(ticket['id']) %}
 {% block title %}Ticket #{{ ticket_number }}{% endblock %}
 {% block content %}
+{% set ticket_status_labels = {
+    'open': 'Aperto',
+    'in_progress': 'In lavorazione',
+    'closed': 'Chiuso',
+    'Accettazione': 'Accettazione',
+    'Preventivo': 'Preventivo',
+    'Riparato': 'Riparato',
+    'Chiuso': 'Chiuso'
+} %}
+{% set repair_status_labels = {
+    'pending': 'In attesa',
+    'in_progress': 'In lavorazione',
+    'completed': 'Completata'
+} %}
 <div class="ticket-header">
     <h2>Ticket #{{ ticket_number }}</h2>
     <div class="ticket-header-details">
         <div><strong>Cliente:</strong> {{ ticket['customer_name'] }}</div>
-        <div><strong>Stato:</strong> {{ ticket['status'] }}</div>
+        <div>
+            <strong>Stato:</strong>
+            {% set status_slug = ticket['status']|lower|replace(' ', '-')|replace('_', '-') %}
+            <span class="badge badge-{{ status_slug }}">{{ ticket_status_labels.get(ticket['status'], ticket['status']) }}</span>
+        </div>
     </div>
 </div>
 <ul>
@@ -45,7 +63,10 @@
         <td>{{ repair['id'] }}</td>
         <td>{{ repair['product'] or 'N/A' }}</td>
         <td>{{ repair['issue_description'] or 'N/A' }}</td>
-        <td>{{ repair['repair_status'] }}</td>
+        {% set repair_status_slug = repair['repair_status']|lower|replace(' ', '-')|replace('_', '-') %}
+        <td>
+            <span class="badge badge-{{ repair_status_slug }}">{{ repair_status_labels.get(repair['repair_status'], repair['repair_status']) }}</span>
+        </td>
         <td>{{ repair['date_received'] or '-' }}</td>
         <td>{{ repair['date_repaired'] or '-' }}</td>
         <td>{{ repair['date_returned'] or '-' }}</td>
