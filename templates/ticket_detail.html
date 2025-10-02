@@ -1,12 +1,17 @@
 {% extends 'base.html' %}
-{% block title %}Ticket #{{ ticket['id'] }}{% endblock %}
+{% set ticket_number = '%04d'|format(ticket['id']) %}
+{% block title %}Ticket #{{ ticket_number }}{% endblock %}
 {% block content %}
-<h2>Ticket #{{ ticket['id'] }}</h2>
+<div class="ticket-header">
+    <h2>Ticket #{{ ticket_number }}</h2>
+    <div class="ticket-header-details">
+        <div><strong>Cliente:</strong> {{ ticket['customer_name'] }}</div>
+        <div><strong>Stato:</strong> {{ ticket['status'] }}</div>
+    </div>
+</div>
 <ul>
-    <li><strong>Cliente:</strong> {{ ticket['customer_name'] }}</li>
     <li><strong>Oggetto:</strong> {{ ticket['subject'] }}</li>
     <li><strong>Descrizione:</strong> {{ ticket['description'] or 'N/A' }}</li>
-    <li><strong>Stato:</strong> {{ ticket['status'] }}</li>
     <li><strong>Creato il:</strong> {{ ticket['created_at'] }}</li>
     <li><strong>Aggiornato il:</strong> {{ ticket['updated_at'] }}</li>
 </ul>
