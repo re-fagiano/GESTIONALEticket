@@ -1,4 +1,12 @@
--- Schema per il gestionale a ticket.
+
+-- Tabella utenti per la gestione dell'autenticazione e dei ruoli.
+CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT NOT NULL UNIQUE,
+    password_hash TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'user',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 -- Tabella clienti.  Ogni cliente ha un identificativo univoco e dati anagrafici.
 CREATE TABLE IF NOT EXISTS customers (

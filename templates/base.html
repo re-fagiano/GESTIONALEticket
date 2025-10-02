@@ -6,8 +6,13 @@
     <title>{% block title %}Gestionale Ticket{% endblock %}</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f5f5f5; }
-        header { background: #2d6cdf; color: white; padding: 1rem; }
-        nav a { color: white; margin-right: 1rem; text-decoration: none; }
+        header { background: #2d6cdf; color: white; padding: 1rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+        header h1 { margin: 0; }
+        nav { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
+        nav a { color: white; text-decoration: none; }
+        .auth-links { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; font-size: 0.9rem; }
+        .auth-links a { color: white; text-decoration: underline; }
+        .auth-links span { opacity: 0.85; }
         main { padding: 1.5rem; }
         table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
         th, td { border: 1px solid #ccc; padding: 0.5rem; text-align: left; }
@@ -15,6 +20,8 @@
         .flash { padding: 0.75rem; margin-bottom: 1rem; border-radius: 4px; }
         .flash.success { background: #d4edda; color: #155724; }
         .flash.error { background: #f8d7da; color: #721c24; }
+        .flash.info { background: #d1ecf1; color: #0c5460; }
+        .info { background: #d1ecf1; color: #0c5460; padding: 0.75rem; border-radius: 4px; }
         form label { display: block; margin-top: 0.75rem; }
         form input, form textarea, form select { width: 100%; padding: 0.5rem; margin-top: 0.25rem; }
         form button { margin-top: 1rem; padding: 0.75rem 1.5rem; background: #2d6cdf; color: white; border: none; cursor: pointer; }
@@ -72,6 +79,15 @@
         <a href="{{ url_for('tickets') }}">Ticket</a>
         <a href="{{ url_for('repairs') }}">Riparazioni</a>
     </nav>
+    <div class="auth-links">
+        {% if current_user.is_authenticated %}
+            <span>{{ current_user.username }}{% if current_user.role %} ({{ current_user.role }}){% endif %}</span>
+            <a href="{{ url_for('auth.logout') }}">Logout</a>
+        {% else %}
+            <a href="{{ url_for('auth.login') }}">Login</a>
+            <a href="{{ url_for('auth.register') }}">Registrati</a>
+        {% endif %}
+    </div>
 </header>
 <main>
     {% with messages = get_flashed_messages(with_categories=true) %}
