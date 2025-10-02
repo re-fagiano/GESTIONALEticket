@@ -4,6 +4,9 @@
 <h2>Crea ticket</h2>
 <form method="post" novalidate>
     {{ form.csrf_token }}
+    {% for error in form.csrf_token.errors %}
+        <div class="form-error">{{ error }}</div>
+    {% endfor %}
     <div class="form-field">
         {{ form.customer_id.label }}
         {{ form.customer_id() }}
