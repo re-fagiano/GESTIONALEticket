@@ -8,7 +8,7 @@
         <option value="">-- seleziona --</option>
         {% for ticket in tickets %}
         {% set selected = request.args.get('ticket_id') == ticket['id']|string %}
-        <option value="{{ ticket['id'] }}" {% if selected %}selected{% endif %}>{{ ticket['subject'] }}</option>
+        <option value="{{ ticket['id'] }}" {% if selected %}selected{% endif %}>{{ '%04d'|format(ticket['id']) }} - {{ ticket['subject'] }}</option>
         {% endfor %}
     </select>
 

@@ -8,19 +8,20 @@
     <thead>
     <tr>
         <th>ID</th>
-        <th>Cliente</th>
+        <th>Cliente / Stato</th>
         <th>Oggetto</th>
-        <th>Stato</th>
         <th>Creato il</th>
     </tr>
     </thead>
     <tbody>
     {% for ticket in tickets %}
     <tr>
-        <td><a href="{{ url_for('ticket_detail', ticket_id=ticket['id']) }}">{{ ticket['id'] }}</a></td>
-        <td>{{ ticket['customer_name'] }}</td>
+        <td><a href="{{ url_for('ticket_detail', ticket_id=ticket['id']) }}">{{ '%04d'|format(ticket['id']) }}</a></td>
+        <td>
+            <div class="ticket-customer">{{ ticket['customer_name'] }}</div>
+            <div class="ticket-status">{{ ticket['status'] }}</div>
+        </td>
         <td>{{ ticket['subject'] }}</td>
-        <td>{{ ticket['status'] }}</td>
         <td>{{ ticket['created_at'] }}</td>
     </tr>
     {% endfor %}
