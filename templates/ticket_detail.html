@@ -6,7 +6,7 @@
     <li><strong>Cliente:</strong> {{ ticket['customer_name'] }}</li>
     <li><strong>Oggetto:</strong> {{ ticket['subject'] }}</li>
     <li><strong>Descrizione:</strong> {{ ticket['description'] or 'N/A' }}</li>
-    <li><strong>Stato:</strong> {{ get_ticket_status_label(ticket['status']) }}</li>
+    <li><strong>Stato:</strong> {{ ticket['status_label'] }}</li>
     <li><strong>Creato il:</strong> {{ ticket['created_at'] }}</li>
     <li><strong>Aggiornato il:</strong> {{ ticket['updated_at'] }}</li>
 </ul>

@@ -17,6 +17,7 @@ from ticket_status import (
     DEFAULT_TICKET_STATUS,
     get_ticket_status_context,
     is_valid_ticket_status,
+    normalize_ticket_record,
     normalize_ticket_status,
 )
 
@@ -92,19 +93,19 @@ def create_app() -> Flask:
             'ORDER BY t.created_at DESC'
         ).fetchall()
         tickets = []
-        status_updates_performed = False
+        pending_updates = []
         for row in ticket_rows:
             ticket = dict(row)
-            normalized_status = normalize_ticket_status(ticket['status'])
-            if normalized_status != ticket['status']:
-                db.execute(
-                    'UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = ?',
-                    (normalized_status, ticket['id'], ticket['status'])
-                )
-                status_updates_performed = True
-            ticket['status'] = normalized_status
+            previous_status = ticket.get('status')
+            normalized_status = normalize_ticket_record(ticket)
+            if normalized_status != previous_status:
+                pending_updates.append((normalized_status, ticket['id'], previous_status))
             tickets.append(ticket)
-        if status_updates_performed:
+        if pending_updates:
+            db.executemany(
+                'UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = ?',
+                pending_updates,
+            )
             db.commit()
         return render_template('tickets.html', tickets=tickets)
 
@@ -144,14 +145,14 @@ def create_app() -> Flask:
             flash('Ticket non trovato.', 'error')
             return redirect(url_for('tickets'))
         ticket = dict(ticket_row)
-        normalized_status = normalize_ticket_status(ticket['status'])
-        if normalized_status != ticket['status']:
+        previous_status = ticket.get('status')
+        normalized_status = normalize_ticket_record(ticket)
+        if normalized_status != previous_status:
             db.execute(
                 'UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = ?',
-                (normalized_status, ticket_id, ticket['status'])
+                (normalized_status, ticket_id, previous_status)
             )
             db.commit()
-        ticket['status'] = normalized_status
         if request.method == 'POST':
             new_status = request.form.get('status', '')
             normalized_status = normalize_ticket_status(new_status)
