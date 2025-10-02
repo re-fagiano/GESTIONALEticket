@@ -6,6 +6,8 @@ connessione al database tramite le funzioni di `database.py` e fornisce
 funzionalità per la gestione di clienti, ticket e riparazioni.
 """
 
+import os
+
 from flask import Flask, render_template, request, redirect, url_for, flash
 from pathlib import Path
 from typing import Optional
@@ -183,4 +185,8 @@ app = create_app()
 
 if __name__ == '__main__':
     # Avvia il server di sviluppo
-    app.run(debug=True)
+    app.run(
+        host='0.0.0.0',
+        port=int(os.environ.get('PORT', 5000)),
+        debug=True,
+    )
