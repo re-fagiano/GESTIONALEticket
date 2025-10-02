@@ -1,7 +1,17 @@
 {% extends 'base.html' %}
 {% block title %}Riparazioni{% endblock %}
 {% block content %}
+{% set repair_status_labels = {
+    'pending': 'In attesa',
+    'in_progress': 'In lavorazione',
+    'completed': 'Completata'
+} %}
 <h2>Riparazioni</h2>
+<div class="status-legend">
+    <span class="badge badge-pending">In attesa</span>
+    <span class="badge badge-in-progress">In lavorazione</span>
+    <span class="badge badge-completed">Completata</span>
+</div>
 <p><a class="button" href="{{ url_for('add_repair') }}">Nuova riparazione</a></p>
 {% if repairs %}
 <table>
@@ -26,7 +36,10 @@
         <td>{{ repair['customer_name'] }}</td>
         <td>{{ repair['product'] or '-' }}</td>
         <td>{{ repair['issue_description'] or '-' }}</td>
-        <td>{{ repair['repair_status'] }}</td>
+        {% set repair_status_slug = repair['repair_status']|lower|replace(' ', '-')|replace('_', '-') %}
+        <td>
+            <span class="badge badge-{{ repair_status_slug }}">{{ repair_status_labels.get(repair['repair_status'], repair['repair_status']) }}</span>
+        </td>
         <td>{{ repair['date_received'] or '-' }}</td>
         <td>{{ repair['date_repaired'] or '-' }}</td>
         <td>{{ repair['date_returned'] or '-' }}</td>
