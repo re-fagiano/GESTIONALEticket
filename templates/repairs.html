@@ -2,12 +2,39 @@
 {% block title %}Riparazioni{% endblock %}
 {% block content %}
 {% set repair_status_labels = repair_status_labels or {} %}
+{% set current_filters = current_filters or {} %}
+{% set selected_status = current_filters.get('status') %}
+{% set from_date = current_filters.get('from_date') %}
+{% set to_date = current_filters.get('to_date') %}
 <h2>Riparazioni</h2>
 <div class="status-legend">
     <span class="badge badge-pending">In attesa</span>
     <span class="badge badge-in-progress">In lavorazione</span>
     <span class="badge badge-completed">Completata</span>
 </div>
+<form method="get" action="{{ url_for('repairs') }}" class="filters-form">
+    <div class="form-group">
+        <label for="status">Stato</label>
+        <select id="status" name="status">
+            <option value="">Tutti gli stati</option>
+            {% for status_value, status_label in repair_statuses %}
+                <option value="{{ status_value }}"{% if status_value == selected_status %} selected{% endif %}>{{ status_label }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div class="form-group">
+        <label for="from_date">Da data</label>
+        <input type="date" id="from_date" name="from_date" value="{{ from_date }}">
+    </div>
+    <div class="form-group">
+        <label for="to_date">A data</label>
+        <input type="date" id="to_date" name="to_date" value="{{ to_date }}">
+    </div>
+    <div class="form-actions">
+        <button type="submit" class="btn btn-primary">Applica filtri</button>
+        <a href="{{ url_for('repairs') }}" class="btn btn-secondary">Azzera</a>
+    </div>
+</form>
 {% if repairs %}
 <table>
     <thead>
