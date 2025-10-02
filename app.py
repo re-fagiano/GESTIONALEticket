@@ -13,22 +13,13 @@ from pathlib import Path
 from typing import Optional
 
 from database import get_db, init_db, close_db
-
-
-TICKET_STATUS_CHOICES = (
-    ('accettazione', 'Accettazione'),
-    ('preventivo', 'Preventivo'),
-    ('riparato', 'Riparato'),
-    ('chiuso', 'Chiuso'),
+from ticket_status import (
+    DEFAULT_TICKET_STATUS,
+    TICKET_STATUS_CHOICES,
+    TICKET_STATUS_LABELS,
+    get_ticket_status_context,
+    is_valid_ticket_status,
 )
-TICKET_STATUS_LABELS = dict(TICKET_STATUS_CHOICES)
-ALLOWED_TICKET_STATUSES = frozenset(value for value, _ in TICKET_STATUS_CHOICES)
-DEFAULT_TICKET_STATUS = 'accettazione'
-
-
-def is_valid_ticket_status(status: str) -> bool:
-    """Return True if *status* is one of the allowed ticket states."""
-    return status in ALLOWED_TICKET_STATUSES
 
 
 def create_app() -> Flask:
@@ -51,12 +42,7 @@ def create_app() -> Flask:
 
     @app.context_processor
     def inject_ticket_status_context():
-        return {
-            'ticket_status_choices': TICKET_STATUS_CHOICES,
-            'ticket_status_labels': TICKET_STATUS_LABELS,
-            'ticket_allowed_statuses': ALLOWED_TICKET_STATUSES,
-            'ticket_default_status': DEFAULT_TICKET_STATUS,
-        }
+        return get_ticket_status_context()
 
 
     # Rotta principale: mostra un riepilogo dei conteggi
