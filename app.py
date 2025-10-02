@@ -251,17 +251,54 @@ def create_app() -> Flask:
     @login_required
     def repairs():
         db = get_db()
-        repairs = db.execute(
+
+        selected_status = request.args.get('status', '').strip() or None
+        from_date = request.args.get('from_date', '').strip() or None
+        to_date = request.args.get('to_date', '').strip() or None
+
+        filters = ['(t.product IS NOT NULL OR t.issue_description IS NOT NULL)']
+        params = []
+
+        if selected_status and selected_status not in REPAIR_STATUS_VALUES:
+            selected_status = None
+
+        if selected_status:
+            filters.append('t.repair_status = ?')
+            params.append(selected_status)
+
+        date_expression = 'DATE(COALESCE(t.date_returned, t.date_repaired, t.date_received, t.updated_at))'
+
+        if from_date:
+            filters.append(f"{date_expression} >= DATE(?)")
+            params.append(from_date)
+
+        if to_date:
+            filters.append(f"{date_expression} <= DATE(?)")
+            params.append(to_date)
+
+        where_clause = ' WHERE ' + ' AND '.join(filters) if filters else ''
+
+        query = (
             'SELECT t.*, c.name AS customer_name '
             'FROM tickets t '
             'JOIN customers c ON t.customer_id = c.id '
-            'WHERE t.product IS NOT NULL OR t.issue_description IS NOT NULL '
+            f'{where_clause} '
             'ORDER BY COALESCE(t.date_returned, t.updated_at) DESC, t.id DESC'
-        ).fetchall()
+        )
+        repairs = db.execute(query, params).fetchall()
+
+        current_filters = {
+            'status': selected_status,
+            'from_date': from_date,
+            'to_date': to_date,
+        }
+
         return render_template(
             'repairs.html',
             repairs=repairs,
             repair_status_labels=REPAIR_STATUS_LABELS,
+            repair_statuses=REPAIR_STATUSES,
+            current_filters=current_filters,
         )
 
     # Gestione errori HTTP comuni con template dedicati.
