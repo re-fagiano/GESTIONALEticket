@@ -3,6 +3,10 @@
 {% block content %}
 {% set repair_status_labels = repair_status_labels or {} %}
 {% set repair_statuses = repair_statuses or [] %}
+{% set current_filters = (current_filters or {}) if current_filters is defined else {} %}
+{% set selected_status = current_filters.get('status') %}
+{% set from_date = current_filters.get('from_date') %}
+{% set to_date = current_filters.get('to_date') %}
 <h2>Riparazioni</h2>
 <div class="status-legend">
     {% for status_value, status_label in repair_statuses %}
