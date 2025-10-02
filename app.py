@@ -28,9 +28,11 @@ TICKET_STATUS_VALUES = set(TICKET_STATUS_LABELS)
 DEFAULT_TICKET_STATUS = TICKET_STATUSES[0][0]
 
 REPAIR_STATUSES = [
-    ("pending", "In attesa"),
-    ("in_progress", "In lavorazione"),
-    ("completed", "Completata"),
+    ("accettazione", "Accettazione"),
+    ("preventivo", "Preventivo"),
+    ("preventivo_accettato", "Preventivo accettato"),
+    ("pronta", "Pronta"),
+    ("riconsegnata", "Riconsegnata"),
 ]
 REPAIR_STATUS_LABELS = {value: label for value, label in REPAIR_STATUSES}
 REPAIR_STATUS_VALUES = set(REPAIR_STATUS_LABELS)
