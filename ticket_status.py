@@ -33,14 +33,28 @@ ALLOWED_TICKET_STATUSES: Final[FrozenSet[str]] = frozenset(TICKET_STATUS_LABELS)
 
 DEFAULT_TICKET_STATUS: Final[str] = "accettazione"
 
+LEGACY_TICKET_STATUS_MAP: Final[Mapping[str, str]] = MappingProxyType(
+    {
+        # Legacy English or previous Italian variants mapped to the new states.
+        "open": "accettazione",
+        "aperto": "accettazione",
+        "in_progress": "preventivo",
+        "processing": "preventivo",
+        "repaired": "riparato",
+        "closed": "chiuso",
+    }
+)
+
 __all__ = [
     "ALLOWED_TICKET_STATUSES",
     "DEFAULT_TICKET_STATUS",
+    "LEGACY_TICKET_STATUS_MAP",
     "TICKET_STATUS_CHOICES",
     "TICKET_STATUS_LABELS",
     "TicketStatusChoice",
     "get_ticket_status_context",
     "get_ticket_status_label",
+    "normalize_ticket_status",
     "is_valid_ticket_status",
 ]
 
@@ -61,6 +75,19 @@ def get_ticket_status_label(status: str) -> str:
     return TICKET_STATUS_LABELS.get(status, status)
 
 
+def normalize_ticket_status(status: str) -> str:
+    """Map legacy ticket statuses to the new canonical values."""
+
+    if not isinstance(status, str):
+        return DEFAULT_TICKET_STATUS
+    stripped = status.strip()
+    lookup_key = stripped.lower()
+    normalized = LEGACY_TICKET_STATUS_MAP.get(lookup_key, stripped)
+    if normalized in ALLOWED_TICKET_STATUSES:
+        return normalized
+    return stripped
+
+
 def get_ticket_status_context() -> Mapping[str, object]:
     """Return the context dictionary shared with Jinja templates.
 
@@ -76,4 +103,5 @@ def get_ticket_status_context() -> Mapping[str, object]:
         "ticket_allowed_statuses": ALLOWED_TICKET_STATUSES,
         "ticket_default_status": DEFAULT_TICKET_STATUS,
         "get_ticket_status_label": get_ticket_status_label,
+        "normalize_ticket_status": normalize_ticket_status,
     }

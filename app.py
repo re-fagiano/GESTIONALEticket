@@ -17,6 +17,7 @@ from ticket_status import (
     DEFAULT_TICKET_STATUS,
     get_ticket_status_context,
     is_valid_ticket_status,
+    normalize_ticket_status,
 )
 
 
@@ -85,11 +86,26 @@ def create_app() -> Flask:
     @app.route('/tickets')
     def tickets():
         db = get_db()
-        tickets = db.execute(
+        ticket_rows = db.execute(
             'SELECT t.*, c.name AS customer_name '
             'FROM tickets t JOIN customers c ON t.customer_id = c.id '
             'ORDER BY t.created_at DESC'
         ).fetchall()
+        tickets = []
+        status_updates_performed = False
+        for row in ticket_rows:
+            ticket = dict(row)
+            normalized_status = normalize_ticket_status(ticket['status'])
+            if normalized_status != ticket['status']:
+                db.execute(
+                    'UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = ?',
+                    (normalized_status, ticket['id'], ticket['status'])
+                )
+                status_updates_performed = True
+            ticket['status'] = normalized_status
+            tickets.append(ticket)
+        if status_updates_performed:
+            db.commit()
         return render_template('tickets.html', tickets=tickets)
 
     # Inserimento nuovo ticket
@@ -119,22 +135,32 @@ def create_app() -> Flask:
     @app.route('/tickets/<int:ticket_id>', methods=['GET', 'POST'])
     def ticket_detail(ticket_id: int):
         db = get_db()
-        ticket = db.execute(
+        ticket_row = db.execute(
             'SELECT t.*, c.name AS customer_name '
             'FROM tickets t JOIN customers c ON t.customer_id = c.id '
             'WHERE t.id = ?', (ticket_id,)
         ).fetchone()
-        if ticket is None:
+        if ticket_row is None:
             flash('Ticket non trovato.', 'error')
             return redirect(url_for('tickets'))
+        ticket = dict(ticket_row)
+        normalized_status = normalize_ticket_status(ticket['status'])
+        if normalized_status != ticket['status']:
+            db.execute(
+                'UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND status = ?',
+                (normalized_status, ticket_id, ticket['status'])
+            )
+            db.commit()
+        ticket['status'] = normalized_status
         if request.method == 'POST':
             new_status = request.form.get('status', '')
-            if not is_valid_ticket_status(new_status):
+            normalized_status = normalize_ticket_status(new_status)
+            if not is_valid_ticket_status(normalized_status):
                 flash('Stato selezionato non valido.', 'error')
             else:
                 db.execute(
                     'UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-                    (new_status, ticket_id)
+                    (normalized_status, ticket_id)
                 )
                 db.commit()
                 flash('Stato del ticket aggiornato.', 'success')
