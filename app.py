@@ -44,6 +44,15 @@ def create_app() -> Flask:
     with app.app_context():
         init_db()
 
+    @app.context_processor
+    def inject_ticket_status_context():
+        return {
+            'ticket_status_choices': TICKET_STATUS_CHOICES,
+            'ticket_status_labels': TICKET_STATUS_LABELS,
+            'ticket_allowed_statuses': ALLOWED_TICKET_STATUSES,
+            'ticket_default_status': DEFAULT_TICKET_STATUS,
+        }
+
 
     # Rotta principale: mostra un riepilogo dei conteggi
     @app.route('/')
@@ -92,8 +101,7 @@ def create_app() -> Flask:
             'FROM tickets t JOIN customers c ON t.customer_id = c.id '
             'ORDER BY t.created_at DESC'
         ).fetchall()
-        return render_template('tickets.html', tickets=tickets,
-                               status_labels=TICKET_STATUS_LABELS)
+        return render_template('tickets.html', tickets=tickets)
 
     # Inserimento nuovo ticket
     @app.route('/tickets/new', methods=['GET', 'POST'])
@@ -151,8 +159,6 @@ def create_app() -> Flask:
             'ticket_detail.html',
             ticket=ticket,
             repairs=repairs,
-            status_choices=TICKET_STATUS_CHOICES,
-            status_labels=TICKET_STATUS_LABELS,
         )
 
     # Lista delle riparazioni
