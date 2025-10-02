@@ -2,21 +2,29 @@
 {% block title %}Nuovo ticket{% endblock %}
 {% block content %}
 <h2>Crea ticket</h2>
-<form method="post">
-    <label for="customer_id">Cliente *</label>
-    <select id="customer_id" name="customer_id" required>
-        <option value="">-- seleziona --</option>
-        {% for customer in customers %}
-        <option value="{{ customer['id'] }}">{{ customer['name'] }}</option>
+<form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="form-field">
+        {{ form.customer_id.label }}
+        {{ form.customer_id() }}
+        {% for error in form.customer_id.errors %}
+            <div class="form-error">{{ error }}</div>
         {% endfor %}
-    </select>
-
-    <label for="subject">Oggetto *</label>
-    <input type="text" id="subject" name="subject" required>
-
-    <label for="description">Descrizione</label>
-    <textarea id="description" name="description" rows="4"></textarea>
-
+    </div>
+    <div class="form-field">
+        {{ form.subject.label }}
+        {{ form.subject() }}
+        {% for error in form.subject.errors %}
+            <div class="form-error">{{ error }}</div>
+        {% endfor %}
+    </div>
+    <div class="form-field">
+        {{ form.description.label }}
+        {{ form.description(rows=4) }}
+        {% for error in form.description.errors %}
+            <div class="form-error">{{ error }}</div>
+        {% endfor %}
+    </div>
     <button type="submit">Salva</button>
 </form>
 {% endblock %}

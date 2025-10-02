@@ -2,38 +2,57 @@
 {% block title %}Nuova riparazione{% endblock %}
 {% block content %}
 <h2>Registra riparazione</h2>
-<form method="post">
-    <label for="ticket_id">Ticket *</label>
-    <select id="ticket_id" name="ticket_id" required>
-        <option value="">-- seleziona --</option>
-        {% for ticket in tickets %}
-        {% set selected = request.args.get('ticket_id') == ticket['id']|string %}
-        <option value="{{ ticket['id'] }}" {% if selected %}selected{% endif %}>{{ '%04d'|format(ticket['id']) }} - {{ ticket['subject'] }}</option>
+<form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="form-field">
+        {{ form.ticket_id.label }}
+        {{ form.ticket_id() }}
+        {% for error in form.ticket_id.errors %}
+            <div class="form-error">{{ error }}</div>
         {% endfor %}
-    </select>
-
-    <label for="product">Prodotto</label>
-    <input type="text" id="product" name="product">
-
-    <label for="issue_description">Descrizione problema</label>
-    <textarea id="issue_description" name="issue_description" rows="4"></textarea>
-
-    <label for="repair_status">Stato riparazione</label>
-    <select id="repair_status" name="repair_status">
-        <option value="pending">In attesa</option>
-        <option value="in_progress">In lavorazione</option>
-        <option value="completed">Completata</option>
-    </select>
-
-    <label for="date_received">Data ricezione</label>
-    <input type="date" id="date_received" name="date_received">
-
-    <label for="date_repaired">Data riparazione</label>
-    <input type="date" id="date_repaired" name="date_repaired">
-
-    <label for="date_returned">Data consegna</label>
-    <input type="date" id="date_returned" name="date_returned">
-
+    </div>
+    <div class="form-field">
+        {{ form.product.label }}
+        {{ form.product() }}
+        {% for error in form.product.errors %}
+            <div class="form-error">{{ error }}</div>
+        {% endfor %}
+    </div>
+    <div class="form-field">
+        {{ form.issue_description.label }}
+        {{ form.issue_description(rows=4) }}
+        {% for error in form.issue_description.errors %}
+            <div class="form-error">{{ error }}</div>
+        {% endfor %}
+    </div>
+    <div class="form-field">
+        {{ form.repair_status.label }}
+        {{ form.repair_status() }}
+        {% for error in form.repair_status.errors %}
+            <div class="form-error">{{ error }}</div>
+        {% endfor %}
+    </div>
+    <div class="form-field">
+        {{ form.date_received.label }}
+        {{ form.date_received() }}
+        {% for error in form.date_received.errors %}
+            <div class="form-error">{{ error }}</div>
+        {% endfor %}
+    </div>
+    <div class="form-field">
+        {{ form.date_repaired.label }}
+        {{ form.date_repaired() }}
+        {% for error in form.date_repaired.errors %}
+            <div class="form-error">{{ error }}</div>
+        {% endfor %}
+    </div>
+    <div class="form-field">
+        {{ form.date_returned.label }}
+        {{ form.date_returned() }}
+        {% for error in form.date_returned.errors %}
+            <div class="form-error">{{ error }}</div>
+        {% endfor %}
+    </div>
     <button type="submit">Salva</button>
 </form>
 {% endblock %}

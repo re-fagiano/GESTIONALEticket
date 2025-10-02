@@ -15,13 +15,15 @@
     <li><strong>Creato il:</strong> {{ ticket['created_at'] }}</li>
     <li><strong>Aggiornato il:</strong> {{ ticket['updated_at'] }}</li>
 </ul>
-<form method="post">
-    <label for="status">Aggiorna stato</label>
-    <select id="status" name="status">
-        <option value="open" {% if ticket['status'] == 'open' %}selected{% endif %}>Aperto</option>
-        <option value="in_progress" {% if ticket['status'] == 'in_progress' %}selected{% endif %}>In lavorazione</option>
-        <option value="closed" {% if ticket['status'] == 'closed' %}selected{% endif %}>Chiuso</option>
-    </select>
+<form method="post" novalidate>
+    {{ form.hidden_tag() }}
+    <div class="form-field">
+        {{ form.status.label }}
+        {{ form.status() }}
+        {% for error in form.status.errors %}
+            <div class="form-error">{{ error }}</div>
+        {% endfor %}
+    </div>
     <button type="submit">Aggiorna</button>
 </form>
 <h3>Riparazioni</h3>
