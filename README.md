@@ -53,6 +53,14 @@ Questo progetto è un semplice gestionale a ticket pensato per officine o centri
 - `static/style.css` – foglio di stile di base per la grafica dell’interfaccia.
 - `requirements.txt` – elenco dei pacchetti Python necessari.
 
+## Test manuali consigliati
+
+Per verificare la corretta gestione dei campi obbligatori nella creazione di una riparazione:
+
+1. Avvia l’applicazione con `flask --app app.py run --reload`.
+2. Visita la pagina **Nuova riparazione** (`/repairs/new`) e prova a inviare il modulo senza compilare *Prodotto* o *Descrizione problema*; il browser blocca l’invio e mostra un messaggio di validazione HTML5.
+3. (Opzionale) Rimuovi temporaneamente gli attributi `required` dal modulo tramite gli strumenti di sviluppo del browser e ripeti l’invio con campi vuoti: l’applicazione visualizza messaggi di errore e non registra la riparazione.
+
 ## Espansioni possibili
 
 Questo gestionale è pensato come base da cui partire.  Alcune idee per evolverlo:

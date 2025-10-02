@@ -178,14 +178,24 @@ def create_app() -> Flask:
             date_received = request.form.get('date_received') or None
             date_repaired = request.form.get('date_repaired') or None
             date_returned = request.form.get('date_returned') or None
+
+            errors = []
             if not ticket_id:
-                flash('È necessario selezionare un ticket.', 'error')
+                errors.append('È necessario selezionare un ticket.')
+            if not product:
+                errors.append('Il prodotto è obbligatorio.')
+            if not issue_description:
+                errors.append('La descrizione del problema è obbligatoria.')
+
+            if errors:
+                for message in errors:
+                    flash(message, 'error')
             else:
                 db.execute(
                     'INSERT INTO repairs '
                     '(ticket_id, product, issue_description, repair_status, date_received, date_repaired, date_returned) '
                     'VALUES (?, ?, ?, ?, ?, ?, ?)',
-                    (ticket_id, product or None, issue_description or None, repair_status,
+                    (ticket_id, product, issue_description, repair_status,
                      date_received, date_repaired, date_returned)
                 )
                 db.commit()
