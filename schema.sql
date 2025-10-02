@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS tickets (
     customer_id INTEGER NOT NULL,
     subject TEXT NOT NULL,
     description TEXT,
-    status TEXT NOT NULL DEFAULT 'open',
+    status TEXT NOT NULL DEFAULT 'accettazione'
+        CHECK (status IN ('accettazione', 'preventivo', 'riparato', 'chiuso')),
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE

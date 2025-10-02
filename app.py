@@ -15,6 +15,17 @@ from typing import Optional
 from database import get_db, init_db, close_db
 
 
+TICKET_STATUS_CHOICES = [
+    ('accettazione', 'Accettazione'),
+    ('preventivo', 'Preventivo'),
+    ('riparato', 'Riparato'),
+    ('chiuso', 'Chiuso'),
+]
+TICKET_STATUS_LABELS = dict(TICKET_STATUS_CHOICES)
+ALLOWED_TICKET_STATUSES = set(TICKET_STATUS_LABELS)
+DEFAULT_TICKET_STATUS = 'accettazione'
+
+
 def create_app() -> Flask:
     """Factory per creare e configurare l'istanza di Flask."""
     app = Flask(__name__, instance_relative_config=True)
@@ -81,7 +92,8 @@ def create_app() -> Flask:
             'FROM tickets t JOIN customers c ON t.customer_id = c.id '
             'ORDER BY t.created_at DESC'
         ).fetchall()
-        return render_template('tickets.html', tickets=tickets)
+        return render_template('tickets.html', tickets=tickets,
+                               status_labels=TICKET_STATUS_LABELS)
 
     # Inserimento nuovo ticket
     @app.route('/tickets/new', methods=['GET', 'POST'])
@@ -97,7 +109,7 @@ def create_app() -> Flask:
                 db.execute(
                     'INSERT INTO tickets (customer_id, subject, description, status) '
                     'VALUES (?, ?, ?, ?)',
-                    (customer_id, subject, description or None, 'open')
+                    (customer_id, subject, description or None, DEFAULT_TICKET_STATUS)
                 )
                 db.commit()
                 flash('Ticket creato con successo.', 'success')
@@ -119,8 +131,10 @@ def create_app() -> Flask:
             flash('Ticket non trovato.', 'error')
             return redirect(url_for('tickets'))
         if request.method == 'POST':
-            new_status = request.form.get('status')
-            if new_status:
+            new_status = request.form.get('status', '')
+            if new_status not in ALLOWED_TICKET_STATUSES:
+                flash('Stato selezionato non valido.', 'error')
+            else:
                 db.execute(
                     'UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
                     (new_status, ticket_id)
@@ -133,7 +147,13 @@ def create_app() -> Flask:
             'SELECT * FROM repairs WHERE ticket_id = ? ORDER BY id DESC',
             (ticket_id,)
         ).fetchall()
-        return render_template('ticket_detail.html', ticket=ticket, repairs=repairs)
+        return render_template(
+            'ticket_detail.html',
+            ticket=ticket,
+            repairs=repairs,
+            status_choices=TICKET_STATUS_CHOICES,
+            status_labels=TICKET_STATUS_LABELS,
+        )
 
     # Lista delle riparazioni
     @app.route('/repairs')
