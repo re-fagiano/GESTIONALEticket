@@ -16,7 +16,7 @@
     <li><strong>Aggiornato il:</strong> {{ ticket['updated_at'] }}</li>
 </ul>
 <form method="post" novalidate>
-    {{ form.hidden_tag() }}
+    {{ form.csrf_token }}
     <div class="form-field">
         {{ form.status.label }}
         {{ form.status() }}

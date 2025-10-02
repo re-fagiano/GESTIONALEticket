@@ -3,7 +3,7 @@
 {% block content %}
 <h2>Registra riparazione</h2>
 <form method="post" novalidate>
-    {{ form.hidden_tag() }}
+    {{ form.csrf_token }}
     <div class="form-field">
         {{ form.ticket_id.label }}
         {{ form.ticket_id() }}
