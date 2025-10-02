@@ -2,7 +2,17 @@
 {% block title %}Ticket{% endblock %}
 {% block content %}
 <h2>Ticket</h2>
-<p><a class="button" href="{{ url_for('add_ticket') }}">Nuovo ticket</a></p>
+<form method="get" action="{{ url_for('tickets') }}" class="filters">
+    <label for="status">Stato:</label>
+    <select name="status" id="status" onchange="this.form.submit()">
+        <option value="" {% if not selected_status %}selected{% endif %}>Tutti</option>
+        {% for status in statuses %}
+        <option value="{{ status }}" {% if status == selected_status %}selected{% endif %}>{{ status }}</option>
+        {% endfor %}
+    </select>
+    <noscript><button type="submit">Filtra</button></noscript>
+</form>
+<p><a class="button" href="{{ url_for('add_ticket', **current_filters) }}">Nuovo ticket</a></p>
 {% if tickets %}
 <table>
     <thead>
