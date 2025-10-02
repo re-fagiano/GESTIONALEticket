@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block title %}Ticket{% endblock %}
+{% block content %}
+<h2>Ticket</h2>
+<p><a class="button" href="{{ url_for('add_ticket') }}">Nuovo ticket</a></p>
+{% if tickets %}
+<table>
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Cliente</th>
+        <th>Oggetto</th>
+        <th>Stato</th>
+        <th>Creato il</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for ticket in tickets %}
+    <tr>
+        <td><a href="{{ url_for('ticket_detail', ticket_id=ticket['id']) }}">{{ ticket['id'] }}</a></td>
+        <td>{{ ticket['customer_name'] }}</td>
+        <td>{{ ticket['subject'] }}</td>
+        <td>{{ ticket['status'] }}</td>
+        <td>{{ ticket['created_at'] }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>Nessun ticket presente.</p>
+{% endif %}
+{% endblock %}

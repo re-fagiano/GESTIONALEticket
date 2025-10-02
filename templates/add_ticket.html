@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+{% block title %}Nuovo ticket{% endblock %}
+{% block content %}
+<h2>Crea ticket</h2>
+<form method="post">
+    <label for="customer_id">Cliente *</label>
+    <select id="customer_id" name="customer_id" required>
+        <option value="">-- seleziona --</option>
+        {% for customer in customers %}
+        <option value="{{ customer['id'] }}">{{ customer['name'] }}</option>
+        {% endfor %}
+    </select>
+
+    <label for="subject">Oggetto *</label>
+    <input type="text" id="subject" name="subject" required>
+
+    <label for="description">Descrizione</label>
+    <textarea id="description" name="description" rows="4"></textarea>
+
+    <button type="submit">Salva</button>
+</form>
+{% endblock %}

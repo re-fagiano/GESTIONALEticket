@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+{% block title %}Ticket #{{ ticket['id'] }}{% endblock %}
+{% block content %}
+<h2>Ticket #{{ ticket['id'] }}</h2>
+<ul>
+    <li><strong>Cliente:</strong> {{ ticket['customer_name'] }}</li>
+    <li><strong>Oggetto:</strong> {{ ticket['subject'] }}</li>
+    <li><strong>Descrizione:</strong> {{ ticket['description'] or 'N/A' }}</li>
+    <li><strong>Stato:</strong> {{ ticket['status'] }}</li>
+    <li><strong>Creato il:</strong> {{ ticket['created_at'] }}</li>
+    <li><strong>Aggiornato il:</strong> {{ ticket['updated_at'] }}</li>
+</ul>
+<form method="post">
+    <label for="status">Aggiorna stato</label>
+    <select id="status" name="status">
+        <option value="open" {% if ticket['status'] == 'open' %}selected{% endif %}>Aperto</option>
+        <option value="in_progress" {% if ticket['status'] == 'in_progress' %}selected{% endif %}>In lavorazione</option>
+        <option value="closed" {% if ticket['status'] == 'closed' %}selected{% endif %}>Chiuso</option>
+    </select>
+    <button type="submit">Aggiorna</button>
+</form>
+<h3>Riparazioni</h3>
+<p><a class="button" href="{{ url_for('add_repair', ticket_id=ticket['id']) }}">Aggiungi riparazione</a></p>
+{% if repairs %}
+<table>
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Prodotto</th>
+        <th>Descrizione problema</th>
+        <th>Stato riparazione</th>
+        <th>Ricevuto</th>
+        <th>Riparato</th>
+        <th>Consegnato</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for repair in repairs %}
+    <tr>
+        <td>{{ repair['id'] }}</td>
+        <td>{{ repair['product'] or 'N/A' }}</td>
+        <td>{{ repair['issue_description'] or 'N/A' }}</td>
+        <td>{{ repair['repair_status'] }}</td>
+        <td>{{ repair['date_received'] or '-' }}</td>
+        <td>{{ repair['date_repaired'] or '-' }}</td>
+        <td>{{ repair['date_returned'] or '-' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>Nessuna riparazione associata.</p>
+{% endif %}
+{% endblock %}

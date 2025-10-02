@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}Riparazioni{% endblock %}
+{% block content %}
+<h2>Riparazioni</h2>
+<p><a class="button" href="{{ url_for('add_repair') }}">Nuova riparazione</a></p>
+{% if repairs %}
+<table>
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Ticket</th>
+        <th>Cliente</th>
+        <th>Prodotto</th>
+        <th>Descrizione problema</th>
+        <th>Stato</th>
+        <th>Ricevuto</th>
+        <th>Riparato</th>
+        <th>Consegnato</th>
+    </tr>
+    </thead>
+    <tbody>
+    {% for repair in repairs %}
+    <tr>
+        <td>{{ repair['id'] }}</td>
+        <td><a href="{{ url_for('ticket_detail', ticket_id=repair['ticket_id']) }}">{{ repair['ticket_subject'] }}</a></td>
+        <td>{{ repair['customer_name'] }}</td>
+        <td>{{ repair['product'] or '-' }}</td>
+        <td>{{ repair['issue_description'] or '-' }}</td>
+        <td>{{ repair['repair_status'] }}</td>
+        <td>{{ repair['date_received'] or '-' }}</td>
+        <td>{{ repair['date_repaired'] or '-' }}</td>
+        <td>{{ repair['date_returned'] or '-' }}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p>Nessuna riparazione registrata.</p>
+{% endif %}
+{% endblock %}

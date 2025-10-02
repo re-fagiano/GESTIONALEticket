@@ -17,19 +17,19 @@ def create_app() -> Flask:
     """Factory per creare e configurare l'istanza di Flask."""
     app = Flask(__name__, instance_relative_config=True)
     # Chiave segreta per il sistema di messaggistica flash
-    app.config.setdefault('SECRET_KEY', 'change-me-please')
+    app.config['SECRET_KEY'] = 'change-me-please'
     # Percorso del database: per default è nella stessa directory del file app
     app.config.setdefault('DATABASE', str(Path(app.root_path) / 'database.db'))
 
     # Chiude la connessione al database alla fine di ogni richiesta
     @app.teardown_appcontext
     def _close_database(exception: Optional[BaseException] = None):
-       close_db(exception)
+        close_db(exception)
 
     # Inizializza il database una volta all’avvio utilizzando il contesto dell’applicazione.
     # In Flask 3.x il decorator before_first_request non è più disponibile.
     with app.app_context():
-    init_db()
+        init_db()
 
 
     # Rotta principale: mostra un riepilogo dei conteggi
@@ -178,7 +178,9 @@ def create_app() -> Flask:
     return app
 
 
+app = create_app()
+
+
 if __name__ == '__main__':
-    app = create_app()
     # Avvia il server di sviluppo
     app.run(debug=True)
