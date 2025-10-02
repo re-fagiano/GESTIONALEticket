@@ -29,7 +29,7 @@ def create_app() -> Flask:
     # Inizializza il database una volta all’avvio utilizzando il contesto dell’applicazione.
     # In Flask 3.x il decorator before_first_request non è più disponibile.
     with app.app_context():
-    init_db()
+        init_db()
 
 
     # Rotta principale: mostra un riepilogo dei conteggi
