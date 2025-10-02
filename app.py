@@ -27,6 +27,15 @@ TICKET_STATUS_LABELS = {value: label for value, label in TICKET_STATUSES}
 TICKET_STATUS_VALUES = set(TICKET_STATUS_LABELS)
 DEFAULT_TICKET_STATUS = TICKET_STATUSES[0][0]
 
+REPAIR_STATUSES = [
+    ("pending", "In attesa"),
+    ("in_progress", "In lavorazione"),
+    ("completed", "Completata"),
+]
+REPAIR_STATUS_LABELS = {value: label for value, label in REPAIR_STATUSES}
+REPAIR_STATUS_VALUES = set(REPAIR_STATUS_LABELS)
+DEFAULT_REPAIR_STATUS = REPAIR_STATUSES[0][0]
+
 
 def create_app() -> Flask:
     """Factory per creare e configurare l'istanza di Flask."""
@@ -58,7 +67,10 @@ def create_app() -> Flask:
         db = get_db()
         ticket_count = db.execute('SELECT COUNT(*) AS count FROM tickets').fetchone()['count']
         customer_count = db.execute('SELECT COUNT(*) AS count FROM customers').fetchone()['count']
-        repair_count = db.execute('SELECT COUNT(*) AS count FROM repairs').fetchone()['count']
+        repair_count = db.execute(
+            'SELECT COUNT(*) AS count FROM tickets '
+            'WHERE product IS NOT NULL OR issue_description IS NOT NULL'
+        ).fetchone()['count']
         return render_template('index.html', ticket_count=ticket_count,
                                customer_count=customer_count, repair_count=repair_count)
 
@@ -130,20 +142,45 @@ def create_app() -> Flask:
             customer_id = request.form.get('customer_id')
             subject = request.form.get('subject', '').strip()
             description = request.form.get('description', '').strip()
+            product = request.form.get('product', '').strip()
+            issue_description = request.form.get('issue_description', '').strip()
+            repair_status = request.form.get('repair_status', DEFAULT_REPAIR_STATUS)
+            if repair_status not in REPAIR_STATUS_VALUES:
+                repair_status = DEFAULT_REPAIR_STATUS
+            date_received = request.form.get('date_received') or None
+            date_repaired = request.form.get('date_repaired') or None
+            date_returned = request.form.get('date_returned') or None
             if not customer_id or not subject:
                 flash('Cliente e oggetto sono obbligatori.', 'error')
             else:
                 db.execute(
-                    'INSERT INTO tickets (customer_id, subject, description, status) '
-                    'VALUES (?, ?, ?, ?)',
-                    (customer_id, subject, description or None, DEFAULT_TICKET_STATUS)
+                    'INSERT INTO tickets ('
+                    'customer_id, subject, description, status, product, issue_description, '
+                    'repair_status, date_received, date_repaired, date_returned'
+                    ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    (
+                        customer_id,
+                        subject,
+                        description or None,
+                        DEFAULT_TICKET_STATUS,
+                        product or None,
+                        issue_description or None,
+                        repair_status,
+                        date_received,
+                        date_repaired,
+                        date_returned,
+                    )
                 )
                 db.commit()
                 flash('Ticket creato con successo.', 'success')
                 return redirect(url_for('tickets'))
         # Per GET (o se form incompleto), recupera elenco clienti per la select
         customers = db.execute('SELECT id, name FROM customers ORDER BY name').fetchall()
-        return render_template('add_ticket.html', customers=customers)
+        return render_template(
+            'add_ticket.html',
+            customers=customers,
+            repair_statuses=REPAIR_STATUSES,
+        )
 
     # Dettaglio ticket e aggiornamento stato
     @app.route('/tickets/<int:ticket_id>', methods=['GET', 'POST'])
@@ -161,28 +198,50 @@ def create_app() -> Flask:
         if request.method == 'POST':
             if not getattr(current_user, 'is_admin', False):
                 abort(403)
-            new_status = request.form.get('status', '').strip()
-            if new_status in TICKET_STATUS_VALUES:
-                db.execute(
-                    'UPDATE tickets SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-                    (new_status, ticket_id)
-                )
-                db.commit()
-                flash('Stato del ticket aggiornato.', 'success')
-                return redirect(url_for('ticket_detail', ticket_id=ticket_id))
-            else:
+            new_status = request.form.get('status', '').strip() or ticket['status']
+            if new_status not in TICKET_STATUS_VALUES:
                 flash('Stato del ticket non valido.', 'error')
-        # Recupera le riparazioni associate al ticket
-        repairs = db.execute(
-            'SELECT * FROM repairs WHERE ticket_id = ? ORDER BY id DESC',
-            (ticket_id,)
-        ).fetchall()
+                return redirect(url_for('ticket_detail', ticket_id=ticket_id))
+
+            product = request.form.get('product', '').strip() or None
+            issue_description = request.form.get('issue_description', '').strip() or None
+            repair_status = request.form.get(
+                'repair_status',
+                ticket['repair_status'] or DEFAULT_REPAIR_STATUS,
+            )
+            if repair_status not in REPAIR_STATUS_VALUES:
+                repair_status = DEFAULT_REPAIR_STATUS
+            date_received = request.form.get('date_received') or None
+            date_repaired = request.form.get('date_repaired') or None
+            date_returned = request.form.get('date_returned') or None
+
+            db.execute(
+                'UPDATE tickets SET '
+                'status = ?, product = ?, issue_description = ?, repair_status = ?, '
+                'date_received = ?, date_repaired = ?, date_returned = ?, '
+                'updated_at = CURRENT_TIMESTAMP '
+                'WHERE id = ?',
+                (
+                    new_status,
+                    product,
+                    issue_description,
+                    repair_status,
+                    date_received,
+                    date_repaired,
+                    date_returned,
+                    ticket_id,
+                ),
+            )
+            db.commit()
+            flash('Ticket aggiornato con successo.', 'success')
+            return redirect(url_for('ticket_detail', ticket_id=ticket_id))
         return render_template(
             'ticket_detail.html',
             ticket=ticket,
-            repairs=repairs,
             ticket_statuses=TICKET_STATUSES,
             ticket_status_labels=TICKET_STATUS_LABELS,
+            repair_statuses=REPAIR_STATUSES,
+            repair_status_labels=REPAIR_STATUS_LABELS,
         )
 
     # Lista delle riparazioni
@@ -191,53 +250,17 @@ def create_app() -> Flask:
     def repairs():
         db = get_db()
         repairs = db.execute(
-            'SELECT r.*, t.subject AS ticket_subject, c.name AS customer_name '
-            'FROM repairs r '
-            'JOIN tickets t ON r.ticket_id = t.id '
+            'SELECT t.*, c.name AS customer_name '
+            'FROM tickets t '
             'JOIN customers c ON t.customer_id = c.id '
-            'ORDER BY r.id DESC'
+            'WHERE t.product IS NOT NULL OR t.issue_description IS NOT NULL '
+            'ORDER BY COALESCE(t.date_returned, t.updated_at) DESC, t.id DESC'
         ).fetchall()
-        return render_template('repairs.html', repairs=repairs)
-
-    # Inserimento nuova riparazione
-    @app.route('/repairs/new', methods=['GET', 'POST'])
-    @admin_required
-    def add_repair():
-        db = get_db()
-        if request.method == 'POST':
-            ticket_id = request.form.get('ticket_id')
-            product = request.form.get('product', '').strip()
-            issue_description = request.form.get('issue_description', '').strip()
-            repair_status = request.form.get('repair_status', 'pending')
-            date_received = request.form.get('date_received') or None
-            date_repaired = request.form.get('date_repaired') or None
-            date_returned = request.form.get('date_returned') or None
-
-            errors = []
-            if not ticket_id:
-                errors.append('È necessario selezionare un ticket.')
-            if not product:
-                errors.append('Il prodotto è obbligatorio.')
-            if not issue_description:
-                errors.append('La descrizione del problema è obbligatoria.')
-
-            if errors:
-                for message in errors:
-                    flash(message, 'error')
-            else:
-                db.execute(
-                    'INSERT INTO repairs '
-                    '(ticket_id, product, issue_description, repair_status, date_received, date_repaired, date_returned) '
-                    'VALUES (?, ?, ?, ?, ?, ?, ?)',
-                    (ticket_id, product, issue_description, repair_status,
-                     date_received, date_repaired, date_returned)
-                )
-                db.commit()
-                flash('Riparazione registrata con successo.', 'success')
-                return redirect(url_for('ticket_detail', ticket_id=ticket_id))
-        # Per GET, recupera elenco ticket per la select
-        tickets = db.execute('SELECT id, subject FROM tickets ORDER BY created_at DESC').fetchall()
-        return render_template('add_repair.html', tickets=tickets)
+        return render_template(
+            'repairs.html',
+            repairs=repairs,
+            repair_status_labels=REPAIR_STATUS_LABELS,
+        )
 
     # Gestione errori HTTP comuni con template dedicati.
     @app.errorhandler(404)

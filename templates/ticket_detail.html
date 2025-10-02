@@ -2,11 +2,7 @@
 {% set ticket_number = '%04d'|format(ticket['id']) %}
 {% block title %}Ticket #{{ ticket_number }}{% endblock %}
 {% block content %}
-{% set repair_status_labels = {
-    'pending': 'In attesa',
-    'in_progress': 'In lavorazione',
-    'completed': 'Completata'
-} %}
+{% set can_edit = current_user.is_authenticated and current_user.is_admin %}
 <div class="ticket-header">
     <h2>Ticket #{{ ticket_number }}</h2>
     <div class="ticket-header-details">
@@ -24,48 +20,41 @@
     <li><strong>Creato il:</strong> {{ ticket['created_at'] }}</li>
     <li><strong>Aggiornato il:</strong> {{ ticket['updated_at'] }}</li>
 </ul>
-<form method="post">
-    <label for="status">Aggiorna stato</label>
-    <select id="status" name="status">
+<form method="post" class="ticket-edit-form">
+    <label for="status">Stato ticket</label>
+    <select id="status" name="status" {% if not can_edit %}disabled{% endif %}>
         {% for value, label in ticket_statuses %}
         <option value="{{ value }}" {% if ticket['status'] == value %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
     </select>
-    <button type="submit">Aggiorna</button>
+
+    <h3>Dati riparazione</h3>
+    <label for="product">Prodotto</label>
+    <input type="text" id="product" name="product" value="{{ ticket['product'] or '' }}" {% if not can_edit %}readonly{% endif %}>
+
+    <label for="issue_description">Descrizione problema</label>
+    <textarea id="issue_description" name="issue_description" rows="4" {% if not can_edit %}readonly{% endif %}>{{ ticket['issue_description'] or '' }}</textarea>
+
+    <label for="repair_status">Stato riparazione</label>
+    <select id="repair_status" name="repair_status" {% if not can_edit %}disabled{% endif %}>
+        {% for value, label in repair_statuses %}
+        <option value="{{ value }}" {% if ticket['repair_status'] == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+
+    <label for="date_received">Data ricezione</label>
+    <input type="date" id="date_received" name="date_received" value="{{ ticket['date_received'] or '' }}" {% if not can_edit %}readonly{% endif %}>
+
+    <label for="date_repaired">Data riparazione</label>
+    <input type="date" id="date_repaired" name="date_repaired" value="{{ ticket['date_repaired'] or '' }}" {% if not can_edit %}readonly{% endif %}>
+
+    <label for="date_returned">Data consegna</label>
+    <input type="date" id="date_returned" name="date_returned" value="{{ ticket['date_returned'] or '' }}" {% if not can_edit %}readonly{% endif %}>
+
+    {% if can_edit %}
+    <button type="submit">Salva modifiche</button>
+    {% else %}
+    <p class="info">Solo un amministratore può modificare lo stato del ticket e i dati di riparazione.</p>
+    {% endif %}
 </form>
-<h3>Riparazioni</h3>
-<p><a class="button" href="{{ url_for('add_repair', ticket_id=ticket['id']) }}">Aggiungi riparazione</a></p>
-{% if repairs %}
-<table>
-    <thead>
-    <tr>
-        <th>ID</th>
-        <th>Prodotto</th>
-        <th>Descrizione problema</th>
-        <th>Stato riparazione</th>
-        <th>Ricevuto</th>
-        <th>Riparato</th>
-        <th>Consegnato</th>
-    </tr>
-    </thead>
-    <tbody>
-    {% for repair in repairs %}
-    <tr>
-        <td>{{ repair['id'] }}</td>
-        <td>{{ repair['product'] or 'N/A' }}</td>
-        <td>{{ repair['issue_description'] or 'N/A' }}</td>
-        {% set repair_status_slug = repair['repair_status']|lower|replace(' ', '-')|replace('_', '-') %}
-        <td>
-            <span class="badge badge-{{ repair_status_slug }}">{{ repair_status_labels.get(repair['repair_status'], repair['repair_status']) }}</span>
-        </td>
-        <td>{{ repair['date_received'] or '-' }}</td>
-        <td>{{ repair['date_repaired'] or '-' }}</td>
-        <td>{{ repair['date_returned'] or '-' }}</td>
-    </tr>
-    {% endfor %}
-    </tbody>
-</table>
-{% else %}
-<p>Nessuna riparazione associata.</p>
-{% endif %}
 {% endblock %}

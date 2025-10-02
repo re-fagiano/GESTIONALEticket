@@ -5,11 +5,11 @@
 <ul>
     <li>Ticket totali: <strong>{{ ticket_count }}</strong></li>
     <li>Clienti registrati: <strong>{{ customer_count }}</strong></li>
-    <li>Riparazioni totali: <strong>{{ repair_count }}</strong></li>
+    <li>Ticket con dati di riparazione: <strong>{{ repair_count }}</strong></li>
 </ul>
 <p>
     <a class="button" href="{{ url_for('customers') }}">Gestisci clienti</a>
     <a class="button" href="{{ url_for('tickets') }}">Gestisci ticket</a>
-    <a class="button" href="{{ url_for('repairs') }}">Gestisci riparazioni</a>
+    <a class="button" href="{{ url_for('repairs') }}">Storico riparazioni</a>
 </p>
 {% endblock %}
