@@ -15,6 +15,9 @@ from typing import Optional
 from database import get_db, init_db, close_db
 
 
+TICKET_STATUSES = ["Accettazione", "Preventivo", "Riparato", "Chiuso"]
+
+
 def create_app() -> Flask:
     """Factory per creare e configurare l'istanza di Flask."""
     app = Flask(__name__, instance_relative_config=True)
@@ -76,12 +79,27 @@ def create_app() -> Flask:
     @app.route('/tickets')
     def tickets():
         db = get_db()
-        tickets = db.execute(
+        selected_status = request.args.get('status', '').strip()
+        query = (
             'SELECT t.*, c.name AS customer_name '
             'FROM tickets t JOIN customers c ON t.customer_id = c.id '
-            'ORDER BY t.created_at DESC'
-        ).fetchall()
-        return render_template('tickets.html', tickets=tickets)
+        )
+        params = ()
+        if selected_status and selected_status in TICKET_STATUSES:
+            query += 'WHERE t.status = ? '
+            params = (selected_status,)
+        else:
+            selected_status = None
+        query += 'ORDER BY t.created_at DESC'
+        tickets = db.execute(query, params).fetchall()
+        current_filters = {'status': selected_status} if selected_status else {}
+        return render_template(
+            'tickets.html',
+            tickets=tickets,
+            statuses=TICKET_STATUSES,
+            selected_status=selected_status,
+            current_filters=current_filters,
+        )
 
     # Inserimento nuovo ticket
     @app.route('/tickets/new', methods=['GET', 'POST'])
