@@ -1,23 +1,17 @@
 {% extends 'base.html' %}
 {% block title %}Riparazioni{% endblock %}
 {% block content %}
-{% set repair_status_labels = {
-    'pending': 'In attesa',
-    'in_progress': 'In lavorazione',
-    'completed': 'Completata'
-} %}
+{% set repair_status_labels = repair_status_labels or {} %}
 <h2>Riparazioni</h2>
 <div class="status-legend">
     <span class="badge badge-pending">In attesa</span>
     <span class="badge badge-in-progress">In lavorazione</span>
     <span class="badge badge-completed">Completata</span>
 </div>
-<p><a class="button" href="{{ url_for('add_repair') }}">Nuova riparazione</a></p>
 {% if repairs %}
 <table>
     <thead>
     <tr>
-        <th>ID</th>
         <th>Ticket</th>
         <th>Cliente</th>
         <th>Prodotto</th>
@@ -31,14 +25,14 @@
     <tbody>
     {% for repair in repairs %}
     <tr>
-        <td>{{ repair['id'] }}</td>
-        <td><a href="{{ url_for('ticket_detail', ticket_id=repair['ticket_id']) }}">{{ '%04d'|format(repair['ticket_id']) }} - {{ repair['ticket_subject'] }}</a></td>
+        <td><a href="{{ url_for('ticket_detail', ticket_id=repair['id']) }}">{{ '%04d'|format(repair['id']) }} - {{ repair['subject'] }}</a></td>
         <td>{{ repair['customer_name'] }}</td>
         <td>{{ repair['product'] or '-' }}</td>
         <td>{{ repair['issue_description'] or '-' }}</td>
-        {% set repair_status_slug = repair['repair_status']|lower|replace(' ', '-')|replace('_', '-') %}
+        {% set repair_status_slug = (repair['repair_status'] or '')|lower|replace(' ', '-')|replace('_', '-') %}
         <td>
-            <span class="badge badge-{{ repair_status_slug }}">{{ repair_status_labels.get(repair['repair_status'], repair['repair_status']) }}</span>
+            {% set status_label = repair_status_labels.get(repair['repair_status'], repair['repair_status'] or 'N/A') %}
+            <span class="badge badge-{{ repair_status_slug if repair_status_slug else 'pending' }}">{{ status_label }}</span>
         </td>
         <td>{{ repair['date_received'] or '-' }}</td>
         <td>{{ repair['date_repaired'] or '-' }}</td>

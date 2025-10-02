@@ -17,6 +17,31 @@
     <label for="description">Descrizione</label>
     <textarea id="description" name="description" rows="4"></textarea>
 
+    <h3>Dati riparazione</h3>
+    <p class="info">Compila le informazioni se già disponibili; potrai aggiornarle successivamente dal dettaglio ticket.</p>
+
+    <label for="product">Prodotto</label>
+    <input type="text" id="product" name="product" value="{{ request.form.get('product', '') }}">
+
+    <label for="issue_description">Descrizione problema</label>
+    <textarea id="issue_description" name="issue_description" rows="4">{{ request.form.get('issue_description', '') }}</textarea>
+
+    <label for="repair_status">Stato riparazione</label>
+    <select id="repair_status" name="repair_status">
+        {% for value, label in repair_statuses %}
+        <option value="{{ value }}" {% if request.form.get('repair_status', repair_statuses[0][0]) == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+
+    <label for="date_received">Data ricezione</label>
+    <input type="date" id="date_received" name="date_received" value="{{ request.form.get('date_received', '') }}">
+
+    <label for="date_repaired">Data riparazione</label>
+    <input type="date" id="date_repaired" name="date_repaired" value="{{ request.form.get('date_repaired', '') }}">
+
+    <label for="date_returned">Data consegna</label>
+    <input type="date" id="date_returned" name="date_returned" value="{{ request.form.get('date_returned', '') }}">
+
     <button type="submit">Salva</button>
 </form>
 {% endblock %}
