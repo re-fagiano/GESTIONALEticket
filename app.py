@@ -195,6 +195,15 @@ def create_app() -> Flask:
         tickets = db.execute('SELECT id, subject FROM tickets ORDER BY created_at DESC').fetchall()
         return render_template('add_repair.html', tickets=tickets)
 
+    # Gestione errori HTTP comuni con template dedicati.
+    @app.errorhandler(404)
+    def not_found(error):
+        return render_template('errors/404.html'), 404
+
+    @app.errorhandler(500)
+    def internal_server_error(error):
+        return render_template('errors/500.html'), 500
+
     return app
 
 

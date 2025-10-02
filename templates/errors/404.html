@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block title %}Pagina non trovata - Gestionale Ticket{% endblock %}
+
+{% block content %}
+<h2>Ops! Pagina non trovata.</h2>
+<p>La risorsa che stavi cercando potrebbe essere stata rimossa, rinominata o non è mai esistita.</p>
+<p>
+    <a class="button" href="{{ url_for('index') }}">Torna alla dashboard</a>
+    <a class="button" href="{{ url_for('tickets') }}">Vai ai ticket</a>
+</p>
+{% endblock %}

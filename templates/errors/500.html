@@ -1,0 +1,12 @@
+{% extends 'base.html' %}
+
+{% block title %}Errore interno - Gestionale Ticket{% endblock %}
+
+{% block content %}
+<h2>Ci scusiamo, qualcosa è andato storto.</h2>
+<p>Si è verificato un problema interno. Il nostro team è stato informato e sta lavorando per risolverlo.</p>
+<p>
+    <a class="button" href="{{ url_for('index') }}">Torna alla dashboard</a>
+    <a class="button" href="{{ url_for('tickets') }}">Vai ai ticket</a>
+</p>
+{% endblock %}
