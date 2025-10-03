@@ -8,9 +8,10 @@
 {% set to_date = current_filters.get('to_date') %}
 <h2>Riparazioni</h2>
 <div class="status-legend">
-    <span class="badge badge-pending">In attesa</span>
-    <span class="badge badge-in-progress">In lavorazione</span>
-    <span class="badge badge-completed">Completata</span>
+    {% for status_value, status_label in repair_statuses %}
+        {% set status_slug = status_value|replace('_', '-') %}
+        <span class="badge badge-{{ status_slug }}">{{ status_label }}</span>
+    {% endfor %}
 </div>
 <form method="get" action="{{ url_for('repairs') }}" class="filters-form">
     <div class="form-group">

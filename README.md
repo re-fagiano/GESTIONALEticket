@@ -6,7 +6,7 @@ Questo progetto è un semplice gestionale a ticket pensato per officine o centri
 
 - **Anagrafica clienti:** memorizza i dati anagrafici di ciascun cliente (nome, email, telefono, indirizzo) in modo da poterli richiamare rapidamente quando si crea un ticket【212499813267287†L162-L169】.
 - **Gestione dei ticket:** permette di aprire nuovi ticket, associare un cliente al ticket, inserire l’oggetto e la descrizione del problema, e aggiornarne lo stato (es. aperto, in lavorazione, risolto)【212499813267287†L150-L159】. Ogni ticket è identificato da un numero univoco e registra automaticamente la data di apertura【395316353871554†L139-L147】.
-- **Tracciamento delle riparazioni:** per interventi su hardware o dispositivi, è possibile registrare i dettagli della riparazione (prodotto, problema riscontrato, date di consegna/ritiro, ecc.) e aggiornare lo stato della riparazione (accettazione, preventivo, preventivo accettato, pronta, riconsegnata).
+- **Tracciamento delle riparazioni:** per interventi su hardware o dispositivi, è possibile registrare i dettagli della riparazione (prodotto, problema riscontrato, date di consegna/ritiro, ecc.) e aggiornare lo stato della riparazione (diagnosticato, preventivo pronto, preventivo accettato, intervento completato).
 - **Interfaccia web semplice:** l’applicazione fornisce pagine HTML con moduli per inserire e modificare dati e tabelle per visualizzare l’elenco di clienti, ticket e riparazioni.  In futuro è possibile espanderla con funzionalità di ricerca, assegnazione a tecnici specifici o invio di email ai clienti.
 
 ## Requisiti
@@ -43,6 +43,14 @@ Questo progetto è un semplice gestionale a ticket pensato per officine o centri
    ```
 
    Per impostazione predefinita l’applicazione è disponibile all’indirizzo `http://127.0.0.1:5000/`.
+
+### Aggiornamento degli stati di riparazione esistenti
+
+Se stai aggiornando un database già in uso, esegui lo script nella cartella `migrations/` per rimappare i vecchi stati (`accettazione`, `preventivo`, `pronta`, `riconsegnata`, ecc.) sui nuovi valori.  Questo evita discrepanze tra i dati salvati e le nuove opzioni disponibili nell’interfaccia.
+
+```bash
+sqlite3 database.db < migrations/202405_update_repair_statuses.sql
+```
 
 ## Struttura del progetto
 
