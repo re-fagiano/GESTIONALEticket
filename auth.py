@@ -114,11 +114,20 @@ def logout():
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
     db = get_db()
-    admin_exists = bool(
-        db.execute(
-            "SELECT 1 FROM users WHERE role = 'admin' LIMIT 1"
-        ).fetchone()
-    )
+    stats = db.execute(
+        """
+        SELECT
+            COUNT(*) AS total_users,
+            MAX(CASE WHEN role = 'admin' THEN 1 ELSE 0 END) AS admin_present
+        FROM users
+        """
+    ).fetchone()
+    if stats:
+        user_count = stats['total_users'] or 0
+        admin_exists = bool(stats['admin_present'])
+    else:
+        user_count = 0
+        admin_exists = False
 
     current_is_admin = (
         current_user.is_authenticated and getattr(current_user, 'is_admin', False)
@@ -172,5 +181,6 @@ def register():
         'register.html',
         allow_role_selection=allow_role_selection,
         admin_exists=admin_exists,
+        user_count=user_count,
     )
 
