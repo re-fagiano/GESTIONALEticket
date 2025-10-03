@@ -9,28 +9,26 @@ funzionalità per la gestione di clienti, ticket e riparazioni.
 import os
 import re
 import uuid
-
-from flask import (
-    Flask,
-    render_template,
-    request,
-    redirect,
-    url_for,
-    flash,
-    abort,
-    current_app,
-    send_from_directory,
-)
 from pathlib import Path
 from typing import List, Optional, Sequence
 
-from database import get_db, init_db, close_db
-from flask_login import current_user, login_required
-
-from auth import admin_required, bp as auth_bp, login_manager
-
+from flask import (
+    Flask,
+    abort,
+    current_app,
+    flash,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+    url_for,
+)
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
+
+from auth import admin_required, bp as auth_bp, login_manager
+from database import close_db, get_db, init_db
+from flask_login import current_user, login_required
 
 
 TICKET_STATUSES = [
