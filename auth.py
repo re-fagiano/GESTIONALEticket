@@ -114,8 +114,6 @@ def logout():
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
     db = get_db()
-    admin_exists = bool(
-        db.execute(
     # verifica se esiste almeno un amministratore
     admin_exists = bool(
         db.execute(
@@ -168,10 +166,6 @@ def register():
             flash('Utente registrato con successo.', 'success')
             return redirect(url_for('auth.login'))
 
-    return render_template(
-        'register.html',
-        allow_role_selection=allow_role_selection,
-        admin_exists=admin_exists,
     return render_template(
         'register.html',
         allow_role_selection=allow_role_selection,
