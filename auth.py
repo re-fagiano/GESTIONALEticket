@@ -116,10 +116,18 @@ def register():
     db = get_db()
     admin_exists = bool(
         db.execute(
+    # verifica se esiste almeno un amministratore
+    admin_exists = bool(
+        db.execute(
             "SELECT 1 FROM users WHERE role = 'admin' LIMIT 1"
         ).fetchone()
     )
 
+    # calcola il numero totale di utenti (utile per il template/altre logiche)
+    user_count_row = db.execute("SELECT COUNT(*) AS count FROM users").fetchone()
+    user_count = int(user_count_row['count']) if user_count_row else 0
+
+    # la selezione del ruolo è consentita solo agli amministratori autenticati
     allow_role_selection = (
         current_user.is_authenticated and getattr(current_user, 'is_admin', False)
     )
@@ -164,5 +172,10 @@ def register():
         'register.html',
         allow_role_selection=allow_role_selection,
         admin_exists=admin_exists,
+    return render_template(
+        'register.html',
+        allow_role_selection=allow_role_selection,
+        admin_exists=admin_exists,
+        user_count=user_count,
     )
 

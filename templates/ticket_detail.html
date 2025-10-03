@@ -18,7 +18,14 @@
     <li><strong>Oggetto:</strong> {{ ticket['subject'] }}</li>
     <li><strong>Descrizione:</strong> {{ ticket['description'] or 'N/A' }}</li>
     <li><strong>Creato il:</strong> {{ ticket['created_at'] }}</li>
-    <li><strong>Aggiornato il:</strong> {{ ticket['updated_at'] }}</li>
+    <li><strong>Creato da:</strong> {{ ticket['created_by_username'] or 'N/D' }}</li>
+    <li>
+        <strong>Ultima modifica:</strong>
+        {{ ticket['updated_at'] }}
+        {% if ticket['last_modified_by_username'] %}
+        ({{ ticket['last_modified_by_username'] }})
+        {% endif %}
+    </li>
 </ul>
 <form method="post" class="ticket-edit-form">
     <label for="status">Stato ticket</label>
@@ -57,4 +64,36 @@
     <p class="info">Solo un amministratore può modificare lo stato del ticket e i dati di riparazione.</p>
     {% endif %}
 </form>
+
+<section class="ticket-history">
+    <h3>Storico modifiche</h3>
+    {% if history_entries %}
+    <div class="table-responsive">
+        <table class="history-table">
+            <thead>
+                <tr>
+                    <th>Data</th>
+                    <th>Utente</th>
+                    <th>Campo</th>
+                    <th>Da</th>
+                    <th>A</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in history_entries %}
+                <tr>
+                    <td>{{ entry['changed_at'] }}</td>
+                    <td>{{ entry['changed_by_username'] or 'N/D' }}</td>
+                    <td>{{ ticket_history_field_labels.get(entry['field'], entry['field']) }}</td>
+                    <td>{{ entry['old_value'] if entry['old_value'] is not none else '—' }}</td>
+                    <td>{{ entry['new_value'] if entry['new_value'] is not none else '—' }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <p class="info">Nessuna modifica registrata per questo ticket.</p>
+    {% endif %}
+</section>
 {% endblock %}
