@@ -11,6 +11,7 @@
             <th>Nome utente</th>
             <th>Ruolo</th>
             <th>Creato il</th>
+            <th>Azioni</th>
         </tr>
     </thead>
     <tbody>
@@ -20,6 +21,15 @@
             <td>{{ user.username }}</td>
             <td>{{ user.role }}</td>
             <td>{{ user.created_at }}</td>
+            <td>
+                {% if user.role != 'admin' %}
+                <form method="post" action="{{ url_for('promote_user', user_id=user.id) }}" class="inline-form">
+                    <button type="submit">Rendi admin</button>
+                </form>
+                {% else %}
+                <span class="badge">Admin</span>
+                {% endif %}
+            </td>
         </tr>
     {% endfor %}
     </tbody>

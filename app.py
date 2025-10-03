@@ -183,6 +183,29 @@ def create_app() -> Flask:
         ).fetchall()
         return render_template('admin_users.html', users=users)
 
+    @app.route('/admin/users/<int:user_id>/promote', methods=['POST'])
+    @admin_required
+    def promote_user(user_id: int):
+        db = get_db()
+        user = db.execute(
+            'SELECT id, username, role FROM users WHERE id = ?',
+            (user_id,),
+        ).fetchone()
+
+        if user is None:
+            flash('Utente non trovato.', 'error')
+        elif user['role'] == 'admin':
+            flash(f"L'utente \"{user['username']}\" è già un amministratore.", 'info')
+        else:
+            db.execute("UPDATE users SET role = 'admin' WHERE id = ?", (user_id,))
+            db.commit()
+            flash(
+                f"L'utente \"{user['username']}\" è stato promosso ad amministratore.",
+                'success',
+            )
+
+        return redirect(url_for('admin_users'))
+
     # Lista clienti
     @app.route('/customers')
     @login_required
