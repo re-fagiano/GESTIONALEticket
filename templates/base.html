@@ -137,6 +137,63 @@
         .attachment-upload-form input[type="file"] {
             padding: 0.25rem 0;
         }
+        .ai-helper {
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: #fff;
+            border: 1px solid #d9e1ff;
+            border-radius: 6px;
+            position: relative;
+        }
+
+        .ai-helper label {
+            margin-top: 0;
+        }
+
+        .ai-suggest-button {
+            margin-top: 0.75rem;
+            padding: 0.5rem 1rem;
+            background: #344fbd;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .ai-suggest-button[disabled] {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .ai-suggestion {
+            margin-top: 0.75rem;
+            min-height: 1.25rem;
+            font-size: 0.95rem;
+            color: #1b2559;
+        }
+
+        .ai-suggestion.error {
+            color: #c0392b;
+        }
+
+        .ai-suggestion .spinner {
+            display: inline-block;
+            width: 1rem;
+            height: 1rem;
+            border: 2px solid rgba(52, 79, 189, 0.25);
+            border-top-color: #344fbd;
+            border-radius: 50%;
+            animation: ai-spin 0.8s linear infinite;
+        }
+
+        @keyframes ai-spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
     </style>
 </head>
 <body>
@@ -170,6 +227,14 @@
         {% endif %}
     {% endwith %}
     {% block content %}{% endblock %}
+    <script>
+        window.AIHelperConfig = {
+            buttonSelector: '.ai-suggest-button',
+            suggestionSelector: '.ai-suggestion',
+            helperWrapperSelector: '.ai-helper'
+        };
+    </script>
+    <script src="{{ url_for('static', filename='js/ai-helper.js') }}" defer></script>
 </main>
 </body>
 </html>

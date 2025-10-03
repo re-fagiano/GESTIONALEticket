@@ -11,7 +11,8 @@ import uuid
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
 
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file
+import requests
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify
 
 from database import get_db, init_db, close_db
 from flask_login import current_user, login_required
@@ -63,6 +64,13 @@ def create_app() -> Flask:
     app.config.setdefault('DATABASE', str(Path(app.root_path) / 'database.db'))
     app.config.setdefault('UPLOAD_FOLDER', str(Path(app.instance_path) / 'uploads'))
     app.config.setdefault('MAX_CONTENT_LENGTH', 16 * 1024 * 1024)
+    app.config.setdefault('AI_SUGGESTION_ENDPOINT', os.environ.get('AI_SUGGESTION_ENDPOINT'))
+    app.config.setdefault('AI_SUGGESTION_TOKEN', os.environ.get('AI_SUGGESTION_TOKEN'))
+    try:
+        default_timeout = int(os.environ.get('AI_SUGGESTION_TIMEOUT', '15'))
+    except (TypeError, ValueError):
+        default_timeout = 15
+    app.config.setdefault('AI_SUGGESTION_TIMEOUT', default_timeout)
 
     # Garantisce che le directory per i file di istanza e gli upload esistano.
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
@@ -584,6 +592,67 @@ def create_app() -> Flask:
             download_name=attachment['original_filename'],
             mimetype=attachment['content_type'] or 'application/octet-stream',
         )
+
+    @app.route('/ai/suggest', methods=['POST'])
+    @login_required
+    def ai_suggest():
+        if not request.is_json:
+            return jsonify({'error': 'Richiesta non valida.'}), 400
+
+        payload = request.get_json(silent=True) or {}
+        target = (payload.get('target') or '').strip()
+        if target != 'issue_description':
+            return jsonify({'error': 'Campo non supportato.'}), 400
+
+        subject = (payload.get('subject') or '').strip()
+        product = (payload.get('product') or '').strip()
+        issue_description = (payload.get('issue_description') or '').strip()
+        description = (payload.get('description') or '').strip()
+
+        if not any([subject, product, issue_description, description]):
+            return jsonify({'error': 'Fornire almeno un dettaglio per generare un suggerimento.'}), 400
+
+        endpoint = app.config.get('AI_SUGGESTION_ENDPOINT')
+        if not endpoint:
+            return jsonify({'error': 'Servizio AI non configurato.'}), 503
+
+        headers = {'Content-Type': 'application/json'}
+        token = app.config.get('AI_SUGGESTION_TOKEN')
+        if token:
+            headers['Authorization'] = f'Bearer {token}'
+
+        external_payload = {
+            'target': target,
+            'subject': subject,
+            'product': product,
+            'issue_description': issue_description,
+            'description': description,
+            'requested_by': getattr(current_user, 'username', None),
+        }
+
+        try:
+            response = requests.post(
+                endpoint,
+                json=external_payload,
+                headers=headers,
+                timeout=app.config.get('AI_SUGGESTION_TIMEOUT', 15),
+            )
+            response.raise_for_status()
+        except requests.exceptions.Timeout:
+            return jsonify({'error': 'Il servizio AI non ha risposto in tempo.'}), 504
+        except requests.exceptions.RequestException:
+            return jsonify({'error': 'Errore nella comunicazione con il servizio AI.'}), 502
+
+        try:
+            data = response.json()
+        except ValueError:
+            return jsonify({'error': 'Risposta non valida dal servizio AI.'}), 502
+
+        suggestion = (data.get('suggestion') or data.get('content') or '').strip()
+        if not suggestion:
+            return jsonify({'error': 'Nessun suggerimento disponibile dal servizio AI.'}), 502
+
+        return jsonify({'suggestion': suggestion})
 
     # Lista delle riparazioni
     @app.route('/repairs')

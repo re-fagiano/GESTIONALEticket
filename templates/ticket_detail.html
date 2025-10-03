@@ -41,8 +41,14 @@
     <label for="product">Prodotto</label>
     <input type="text" id="product" name="product" value="{{ ticket['product'] or '' }}" {% if not can_edit %}readonly{% endif %}>
 
-    <label for="issue_description">Descrizione problema</label>
-    <textarea id="issue_description" name="issue_description" rows="4" {% if not can_edit %}readonly{% endif %}>{{ ticket['issue_description'] or '' }}</textarea>
+    <div class="ai-helper">
+        <label for="issue_description">Descrizione problema</label>
+        <textarea id="issue_description" name="issue_description" rows="4" {% if not can_edit %}readonly{% endif %}>{{ ticket['issue_description'] or '' }}</textarea>
+        <button type="button" class="ai-suggest-button" data-target="issue_description" {% if not can_edit %}disabled{% endif %}>
+            Chiedi all’AI
+        </button>
+        <div class="ai-suggestion" aria-live="polite"></div>
+    </div>
 
     <label for="payment_info">Informazioni pagamento</label>
     <textarea id="payment_info" name="payment_info" rows="3" {% if not can_edit %}readonly{% endif %}>{{ ticket['payment_info'] or '' }}</textarea>
