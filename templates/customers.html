@@ -11,6 +11,9 @@
         <th>Email</th>
         <th>Telefono</th>
         <th>Indirizzo</th>
+        {% if current_user.is_authenticated and current_user.is_admin %}
+        <th class="actions-column">Azioni</th>
+        {% endif %}
     </tr>
     </thead>
     <tbody>
@@ -20,6 +23,19 @@
         <td>{{ customer['email'] or '-' }}</td>
         <td>{{ customer['phone'] or '-' }}</td>
         <td>{{ customer['address'] or '-' }}</td>
+        {% if current_user.is_authenticated and current_user.is_admin %}
+        <td class="actions-column">
+            <form method="post"
+                  action="{{ url_for('delete_customer', customer_id=customer['id']) }}"
+                  class="inline-form"
+                  onsubmit="return confirm('Confermi l\'eliminazione del cliente? Tutti i ticket associati verranno rimossi.');">
+                {% if csrf_token is defined %}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% endif %}
+                <button type="submit" class="btn-danger">Elimina</button>
+            </form>
+        </td>
+        {% endif %}
     </tr>
     {% endfor %}
     </tbody>

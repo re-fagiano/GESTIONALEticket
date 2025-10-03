@@ -21,6 +21,9 @@
         <th>Cliente / Stato</th>
         <th>Oggetto</th>
         <th>Creato il</th>
+        {% if current_user.is_authenticated and current_user.is_admin %}
+        <th class="actions-column">Azioni</th>
+        {% endif %}
     </tr>
     </thead>
     <tbody>
@@ -36,6 +39,24 @@
         </td>
         <td>{{ ticket['subject'] }}</td>
         <td>{{ ticket['created_at'] }}</td>
+        {% if current_user.is_authenticated and current_user.is_admin %}
+        <td class="actions-column">
+            <form method="post"
+                  action="{{ url_for('delete_ticket', ticket_id=ticket['id']) }}"
+                  class="inline-form"
+                  onsubmit="return confirm('Confermi l\'eliminazione del ticket selezionato?');">
+                {% if csrf_token is defined %}
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% endif %}
+                {% if current_filters %}
+                    {% for filter_key, filter_value in current_filters.items() if filter_value %}
+                    <input type="hidden" name="filter_{{ filter_key }}" value="{{ filter_value }}">
+                    {% endfor %}
+                {% endif %}
+                <button type="submit" class="btn-danger">Elimina</button>
+            </form>
+        </td>
+        {% endif %}
     </tr>
     {% endfor %}
     </tbody>

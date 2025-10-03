@@ -10,7 +10,7 @@ import os
 
 from flask import Flask, render_template, request, redirect, url_for, flash, abort
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 
 from database import get_db, init_db, close_db
 from flask_login import current_user, login_required
@@ -73,6 +73,20 @@ def create_app() -> Flask:
     app.register_blueprint(auth_bp)
 
 
+    def _delete_ticket_record(ticket_id: int) -> Tuple[bool, Optional[str]]:
+        """Elimina il ticket specificato restituendo l'esito e l'oggetto."""
+        db = get_db()
+        ticket = db.execute(
+            'SELECT subject FROM tickets WHERE id = ?',
+            (ticket_id,),
+        ).fetchone()
+        if ticket is None:
+            return False, None
+        db.execute('DELETE FROM tickets WHERE id = ?', (ticket_id,))
+        db.commit()
+        return True, ticket['subject']
+
+
     # Rotta principale: mostra un riepilogo dei conteggi
     @app.route('/')
     @login_required
@@ -103,6 +117,26 @@ def create_app() -> Flask:
         db = get_db()
         customers = db.execute('SELECT * FROM customers ORDER BY name').fetchall()
         return render_template('customers.html', customers=customers)
+
+    @app.route('/customers/<int:customer_id>/delete', methods=['POST'])
+    @admin_required
+    def delete_customer(customer_id: int):
+        db = get_db()
+        customer = db.execute(
+            'SELECT name FROM customers WHERE id = ?',
+            (customer_id,),
+        ).fetchone()
+        if customer is None:
+            flash('Cliente non trovato.', 'error')
+        else:
+            db.execute('DELETE FROM customers WHERE id = ?', (customer_id,))
+            db.commit()
+            customer_name = customer['name']
+            if customer_name:
+                flash(f'Cliente "{customer_name}" eliminato con successo.', 'success')
+            else:
+                flash('Cliente eliminato con successo.', 'success')
+        return redirect(url_for('customers'))
 
     # Inserimento nuovo cliente
     @app.route('/customers/new', methods=['GET', 'POST'])
@@ -154,6 +188,28 @@ def create_app() -> Flask:
             selected_status=selected_status,
             current_filters=current_filters,
         )
+
+    @app.route('/tickets/<int:ticket_id>/delete', methods=['POST'])
+    @admin_required
+    def delete_ticket(ticket_id: int):
+        deleted, subject = _delete_ticket_record(ticket_id)
+        if not deleted:
+            flash('Ticket non trovato.', 'error')
+        else:
+            if subject:
+                flash(f'Ticket "{subject}" eliminato con successo.', 'success')
+            else:
+                flash('Ticket eliminato con successo.', 'success')
+
+        allowed_filters = {'status'}
+        filters = {
+            key[len('filter_'):]: value
+            for key, value in request.form.items()
+            if key.startswith('filter_') and value
+        }
+        filters = {key: value for key, value in filters.items() if key in allowed_filters}
+        redirect_url = url_for('tickets', **filters) if filters else url_for('tickets')
+        return redirect(redirect_url)
 
     # Inserimento nuovo ticket
     @app.route('/tickets/new', methods=['GET', 'POST'])
@@ -409,6 +465,28 @@ def create_app() -> Flask:
             repair_statuses=REPAIR_STATUSES,
             current_filters=current_filters,
         )
+
+    @app.route('/repairs/<int:ticket_id>/delete', methods=['POST'])
+    @admin_required
+    def delete_repair(ticket_id: int):
+        deleted, subject = _delete_ticket_record(ticket_id)
+        if not deleted:
+            flash('Ticket di riparazione non trovato.', 'error')
+        else:
+            if subject:
+                flash(f'Ticket "{subject}" eliminato con successo.', 'success')
+            else:
+                flash('Ticket eliminato con successo.', 'success')
+
+        allowed_filters = {'status', 'from_date', 'to_date'}
+        filters = {
+            key[len('filter_'):]: value
+            for key, value in request.form.items()
+            if key.startswith('filter_') and value
+        }
+        filters = {key: value for key, value in filters.items() if key in allowed_filters}
+        redirect_url = url_for('repairs', **filters) if filters else url_for('repairs')
+        return redirect(redirect_url)
 
     # Gestione errori HTTP comuni con template dedicati.
     @app.errorhandler(404)
