@@ -17,6 +17,14 @@
     <label for="description">Descrizione</label>
     <textarea id="description" name="description" rows="4"></textarea>
 
+    <label for="ticket_status">Stato ticket *</label>
+    <select id="ticket_status" name="ticket_status" required>
+        {% set default_ticket_status = ticket_statuses[0][0] %}
+        {% for value, label in ticket_statuses %}
+        <option value="{{ value }}" {% if request.form.get('ticket_status', default_ticket_status) == value %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+    </select>
+
     <h3>Dati riparazione</h3>
     <p class="info">Compila le informazioni se già disponibili; potrai aggiornarle successivamente dal dettaglio ticket.</p>
 

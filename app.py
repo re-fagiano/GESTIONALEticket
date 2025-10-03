@@ -28,6 +28,7 @@ TICKET_STATUS_VALUES = set(TICKET_STATUS_LABELS)
 DEFAULT_TICKET_STATUS = TICKET_STATUSES[0][0]
 
 REPAIR_STATUSES = [
+    ("accettazione", "Accettazione"),
     ("diagnosticato", "Diagnosticato"),
     ("preventivo_pronto", "Preventivo pronto"),
     ("preventivo_accettato", "Preventivo accettato"),
@@ -221,6 +222,9 @@ def create_app() -> Flask:
             customer_id = request.form.get('customer_id')
             subject = request.form.get('subject', '').strip()
             description = request.form.get('description', '').strip()
+            ticket_status = request.form.get('ticket_status', DEFAULT_TICKET_STATUS)
+            if ticket_status not in TICKET_STATUS_VALUES:
+                ticket_status = DEFAULT_TICKET_STATUS
             product = request.form.get('product', '').strip()
             issue_description = request.form.get('issue_description', '').strip()
             payment_info = request.form.get('payment_info', '').strip()
@@ -242,7 +246,7 @@ def create_app() -> Flask:
                         customer_id,
                         subject,
                         description or None,
-                        DEFAULT_TICKET_STATUS,
+                        ticket_status,
                         product or None,
                         issue_description or None,
                         payment_info or None,
@@ -256,7 +260,7 @@ def create_app() -> Flask:
                 )
                 ticket_id = cursor.lastrowid
                 initial_status_label = TICKET_STATUS_LABELS.get(
-                    DEFAULT_TICKET_STATUS, DEFAULT_TICKET_STATUS
+                    ticket_status, ticket_status
                 )
                 db.execute(
                     'INSERT INTO ticket_history (ticket_id, field, old_value, new_value, changed_by) '
@@ -278,6 +282,7 @@ def create_app() -> Flask:
             'add_ticket.html',
             customers=customers,
             repair_statuses=REPAIR_STATUSES,
+            ticket_statuses=TICKET_STATUSES,
         )
 
     # Dettaglio ticket e aggiornamento stato
