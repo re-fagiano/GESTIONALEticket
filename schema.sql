@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS tickets (
     status TEXT NOT NULL DEFAULT 'open',
     product TEXT,
     issue_description TEXT,
+    payment_info TEXT,
     repair_status TEXT NOT NULL DEFAULT 'accettazione',
     date_received DATE,
     date_repaired DATE,
