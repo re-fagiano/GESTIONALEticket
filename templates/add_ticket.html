@@ -2,7 +2,7 @@
 {% block title %}Nuovo ticket{% endblock %}
 {% block content %}
 <h2>Crea ticket</h2>
-<form method="post">
+<form method="post" enctype="multipart/form-data">
     <label for="customer_id">Cliente *</label>
     <select id="customer_id" name="customer_id" required>
         <option value="">-- seleziona --</option>
@@ -52,6 +52,11 @@
 
     <label for="date_returned">Data consegna</label>
     <input type="date" id="date_returned" name="date_returned" value="{{ request.form.get('date_returned', '') }}">
+
+    <h3>Allegati</h3>
+    <p class="info">Puoi allegare immagini o documenti utili al ticket (dimensione massima 16&nbsp;MB per invio).</p>
+    <label for="attachments">Seleziona file</label>
+    <input type="file" id="attachments" name="attachments" multiple>
 
     <button type="submit">Salva</button>
 </form>

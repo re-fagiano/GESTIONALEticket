@@ -7,15 +7,18 @@ funzionalità per la gestione di clienti, ticket e riparazioni.
 """
 
 import os
-
-from flask import Flask, render_template, request, redirect, url_for, flash
+import uuid
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Iterable, List, Optional, Tuple
+
+from flask import Flask, render_template, request, redirect, url_for, flash, send_file
 
 from database import get_db, init_db, close_db
 from flask_login import current_user, login_required
 
 from auth import admin_required, bp as auth_bp, login_manager
+from werkzeug.datastructures import FileStorage
+from werkzeug.utils import secure_filename
 
 
 TICKET_STATUSES = [
@@ -58,6 +61,12 @@ def create_app() -> Flask:
     app.config['SECRET_KEY'] = 'change-me-please'
     # Percorso del database: per default è nella stessa directory del file app
     app.config.setdefault('DATABASE', str(Path(app.root_path) / 'database.db'))
+    app.config.setdefault('UPLOAD_FOLDER', str(Path(app.instance_path) / 'uploads'))
+    app.config.setdefault('MAX_CONTENT_LENGTH', 16 * 1024 * 1024)
+
+    # Garantisce che le directory per i file di istanza e gli upload esistano.
+    Path(app.instance_path).mkdir(parents=True, exist_ok=True)
+    Path(app.config['UPLOAD_FOLDER']).mkdir(parents=True, exist_ok=True)
 
     login_manager.init_app(app)
 
@@ -72,6 +81,69 @@ def create_app() -> Flask:
         init_db()
 
     app.register_blueprint(auth_bp)
+
+
+    def _store_ticket_attachments(
+        ticket_id: int,
+        files: Iterable[FileStorage],
+        uploaded_by: Optional[int],
+    ) -> Tuple[int, List[str]]:
+        """Salva gli allegati ricevuti per un ticket restituendo numero e errori."""
+
+        saved = 0
+        errors: List[str] = []
+        upload_root = Path(app.config['UPLOAD_FOLDER'])
+        upload_root.mkdir(parents=True, exist_ok=True)
+        ticket_folder = upload_root / str(ticket_id)
+        ticket_folder.mkdir(parents=True, exist_ok=True)
+
+        db = get_db()
+
+        for storage in files:
+            if storage is None:
+                continue
+            original_filename = (storage.filename or '').strip()
+            if not original_filename:
+                continue
+
+            safe_name = secure_filename(original_filename)
+            if not safe_name:
+                errors.append(
+                    f'Impossibile caricare il file "{original_filename}": nome non valido.'
+                )
+                continue
+
+            extension = Path(safe_name).suffix
+            stored_filename = f"{uuid.uuid4().hex}{extension}"
+            destination = ticket_folder / stored_filename
+
+            try:
+                storage.save(destination)
+            except Exception:
+                errors.append(
+                    f'Errore durante il salvataggio del file "{original_filename}".'
+                )
+                if destination.exists():
+                    destination.unlink()
+                continue
+
+            file_size = destination.stat().st_size
+            db.execute(
+                'INSERT INTO ticket_attachments ('
+                'ticket_id, original_filename, stored_filename, content_type, file_size, uploaded_by'
+                ') VALUES (?, ?, ?, ?, ?, ?)',
+                (
+                    ticket_id,
+                    original_filename,
+                    stored_filename,
+                    storage.mimetype or None,
+                    file_size,
+                    uploaded_by,
+                ),
+            )
+            saved += 1
+
+        return saved, errors
 
 
     def _delete_ticket_record(ticket_id: int) -> Tuple[bool, Optional[str]]:
@@ -273,8 +345,19 @@ def create_app() -> Flask:
                         current_user_id,
                     ),
                 )
+                files = request.files.getlist('attachments')
+                saved_attachments, attachment_errors = _store_ticket_attachments(
+                    ticket_id,
+                    files,
+                    current_user_id,
+                )
+                for error in attachment_errors:
+                    flash(error, 'error')
                 db.commit()
-                flash('Ticket creato con successo.', 'success')
+                success_message = 'Ticket creato con successo.'
+                if saved_attachments:
+                    success_message += f' {saved_attachments} allegato/i aggiunti.'
+                flash(success_message, 'success')
                 return redirect(url_for('tickets'))
         # Per GET (o se form incompleto), recupera elenco clienti per la select
         customers = db.execute('SELECT id, name FROM customers ORDER BY name').fetchall()
@@ -304,7 +387,30 @@ def create_app() -> Flask:
             flash('Ticket non trovato.', 'error')
             return redirect(url_for('tickets'))
         if request.method == 'POST':
+            form_name = request.form.get('form_name', 'details')
             current_user_id = int(current_user.id)
+
+            if form_name == 'attachments':
+                files = request.files.getlist('attachments')
+                saved_attachments, attachment_errors = _store_ticket_attachments(
+                    ticket_id,
+                    files,
+                    current_user_id,
+                )
+                for error in attachment_errors:
+                    flash(error, 'error')
+                if saved_attachments:
+                    db.commit()
+                    success_message = (
+                        'Allegato caricato con successo.'
+                        if saved_attachments == 1
+                        else 'Allegati caricati con successo.'
+                    )
+                    flash(success_message, 'success')
+                elif not attachment_errors:
+                    flash('Nessun file selezionato.', 'info')
+                return redirect(url_for('ticket_detail', ticket_id=ticket_id))
+
             new_status = request.form.get('status', '').strip() or ticket['status']
             if new_status not in TICKET_STATUS_VALUES:
                 flash('Stato del ticket non valido.', 'error')
@@ -400,6 +506,16 @@ def create_app() -> Flask:
             flash('Ticket aggiornato con successo.', 'success')
             return redirect(url_for('ticket_detail', ticket_id=ticket_id))
 
+        attachments = db.execute(
+            'SELECT a.id, a.original_filename, a.stored_filename, a.content_type, a.file_size, '
+            'a.uploaded_at, u.username AS uploaded_by_username '
+            'FROM ticket_attachments a '
+            'LEFT JOIN users u ON a.uploaded_by = u.id '
+            'WHERE a.ticket_id = ? '
+            'ORDER BY a.uploaded_at DESC, a.id DESC',
+            (ticket_id,),
+        ).fetchall()
+
         history_entries = db.execute(
             'SELECT h.field, h.old_value, h.new_value, h.changed_at, '
             'u.username AS changed_by_username '
@@ -417,7 +533,33 @@ def create_app() -> Flask:
             repair_statuses=REPAIR_STATUSES,
             repair_status_labels=REPAIR_STATUS_LABELS,
             history_entries=history_entries,
+            attachments=attachments,
             ticket_history_field_labels=TICKET_HISTORY_FIELD_LABELS,
+        )
+
+    @app.route('/tickets/<int:ticket_id>/attachments/<int:attachment_id>/download')
+    @login_required
+    def download_ticket_attachment(ticket_id: int, attachment_id: int):
+        db = get_db()
+        attachment = db.execute(
+            'SELECT id, original_filename, stored_filename, content_type '
+            'FROM ticket_attachments WHERE id = ? AND ticket_id = ?',
+            (attachment_id, ticket_id),
+        ).fetchone()
+        if attachment is None:
+            flash('Allegato non trovato.', 'error')
+            return redirect(url_for('ticket_detail', ticket_id=ticket_id))
+
+        file_path = Path(app.config['UPLOAD_FOLDER']) / str(ticket_id) / attachment['stored_filename']
+        if not file_path.exists():
+            flash('File allegato non trovato sul server.', 'error')
+            return redirect(url_for('ticket_detail', ticket_id=ticket_id))
+
+        return send_file(
+            file_path,
+            as_attachment=True,
+            download_name=attachment['original_filename'],
+            mimetype=attachment['content_type'] or 'application/octet-stream',
         )
 
     # Lista delle riparazioni
