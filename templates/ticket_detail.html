@@ -2,7 +2,7 @@
 {% set ticket_number = '%04d'|format(ticket['id']) %}
 {% block title %}Ticket #{{ ticket_number }}{% endblock %}
 {% block content %}
-{% set can_edit = current_user.is_authenticated and current_user.is_admin %}
+{% set can_edit = current_user.is_authenticated %}
 <div class="ticket-header">
     <h2>Ticket #{{ ticket_number }}</h2>
     <div class="ticket-header-details">
@@ -58,11 +58,7 @@
     <label for="date_returned">Data consegna</label>
     <input type="date" id="date_returned" name="date_returned" value="{{ ticket['date_returned'] or '' }}" {% if not can_edit %}readonly{% endif %}>
 
-    {% if can_edit %}
-    <button type="submit">Salva modifiche</button>
-    {% else %}
-    <p class="info">Solo un amministratore può modificare lo stato del ticket e i dati di riparazione.</p>
-    {% endif %}
+    <button type="submit" {% if not can_edit %}disabled{% endif %}>Salva modifiche</button>
 </form>
 
 <section class="ticket-history">
