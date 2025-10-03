@@ -42,6 +42,7 @@ TICKET_HISTORY_FIELD_LABELS = {
     'status': 'Stato ticket',
     'product': 'Prodotto',
     'issue_description': 'Descrizione problema',
+    'payment_info': 'Informazioni pagamento',
     'repair_status': 'Stato riparazione',
     'date_received': 'Data ricezione',
     'date_repaired': 'Data riparazione',
@@ -166,6 +167,7 @@ def create_app() -> Flask:
             description = request.form.get('description', '').strip()
             product = request.form.get('product', '').strip()
             issue_description = request.form.get('issue_description', '').strip()
+            payment_info = request.form.get('payment_info', '').strip()
             repair_status = request.form.get('repair_status', DEFAULT_REPAIR_STATUS)
             if repair_status not in REPAIR_STATUS_VALUES:
                 repair_status = DEFAULT_REPAIR_STATUS
@@ -177,9 +179,9 @@ def create_app() -> Flask:
             else:
                 cursor = db.execute(
                     'INSERT INTO tickets ('
-                    'customer_id, subject, description, status, product, issue_description, '
+                    'customer_id, subject, description, status, product, issue_description, payment_info, '
                     'repair_status, date_received, date_repaired, date_returned, created_by, last_modified_by'
-                    ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                    ') VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                     (
                         customer_id,
                         subject,
@@ -187,6 +189,7 @@ def create_app() -> Flask:
                         DEFAULT_TICKET_STATUS,
                         product or None,
                         issue_description or None,
+                        payment_info or None,
                         repair_status,
                         date_received,
                         date_repaired,
@@ -250,6 +253,7 @@ def create_app() -> Flask:
 
             product = request.form.get('product', '').strip() or None
             issue_description = request.form.get('issue_description', '').strip() or None
+            payment_info = request.form.get('payment_info', '').strip() or None
             repair_status = request.form.get(
                 'repair_status',
                 ticket['repair_status'] or DEFAULT_REPAIR_STATUS,
@@ -264,6 +268,7 @@ def create_app() -> Flask:
                 'status',
                 'product',
                 'issue_description',
+                'payment_info',
                 'repair_status',
                 'date_received',
                 'date_repaired',
@@ -273,6 +278,7 @@ def create_app() -> Flask:
                 'status': new_status,
                 'product': product,
                 'issue_description': issue_description,
+                'payment_info': payment_info,
                 'repair_status': repair_status,
                 'date_received': date_received,
                 'date_repaired': date_repaired,
@@ -287,7 +293,7 @@ def create_app() -> Flask:
 
             db.execute(
                 'UPDATE tickets SET '
-                'status = ?, product = ?, issue_description = ?, repair_status = ?, '
+                'status = ?, product = ?, issue_description = ?, payment_info = ?, repair_status = ?, '
                 'date_received = ?, date_repaired = ?, date_returned = ?, '
                 'last_modified_by = ?, updated_at = CURRENT_TIMESTAMP '
                 'WHERE id = ?',
@@ -295,6 +301,7 @@ def create_app() -> Flask:
                     new_status,
                     product,
                     issue_description,
+                    payment_info,
                     repair_status,
                     date_received,
                     date_repaired,

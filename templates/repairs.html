@@ -44,6 +44,7 @@
         <th>Cliente</th>
         <th>Prodotto</th>
         <th>Descrizione problema</th>
+        <th>Pagamento</th>
         <th>Stato</th>
         <th>Ricevuto</th>
         <th>Riparato</th>
@@ -57,6 +58,7 @@
         <td>{{ repair['customer_name'] }}</td>
         <td>{{ repair['product'] or '-' }}</td>
         <td>{{ repair['issue_description'] or '-' }}</td>
+        <td>{{ repair['payment_info'] or '-' }}</td>
         {% set repair_status_slug = (repair['repair_status'] or '')|lower|replace(' ', '-')|replace('_', '-') %}
         <td>
             {% set status_label = repair_status_labels.get(repair['repair_status'], repair['repair_status'] or 'N/A') %}
