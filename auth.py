@@ -123,7 +123,7 @@ def register():
     user_count = int(user_count_row['count']) if user_count_row else 0
 
     allow_role_selection = (
-        current_user.is_authenticated and getattr(current_user, 'is_admin', False)
+        current_user.is_authenticated and getattr(current_user, 'role', None) == 'admin'
     )
 
     if request.method == 'POST':
