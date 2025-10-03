@@ -8,7 +8,7 @@ funzionalità per la gestione di clienti, ticket e riparazioni.
 
 import os
 
-from flask import Flask, render_template, request, redirect, url_for, flash, abort
+from flask import Flask, render_template, request, redirect, url_for, flash
 from pathlib import Path
 from typing import Optional
 
@@ -158,7 +158,7 @@ def create_app() -> Flask:
 
     # Inserimento nuovo ticket
     @app.route('/tickets/new', methods=['GET', 'POST'])
-    @admin_required
+    @login_required
     def add_ticket():
         db = get_db()
         if request.method == 'POST':
@@ -244,8 +244,6 @@ def create_app() -> Flask:
             flash('Ticket non trovato.', 'error')
             return redirect(url_for('tickets'))
         if request.method == 'POST':
-            if not getattr(current_user, 'is_admin', False):
-                abort(403)
             current_user_id = int(current_user.id)
             new_status = request.form.get('status', '').strip() or ticket['status']
             if new_status not in TICKET_STATUS_VALUES:
