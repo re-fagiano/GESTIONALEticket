@@ -78,6 +78,9 @@
         <a href="{{ url_for('customers') }}">Clienti</a>
         <a href="{{ url_for('tickets') }}">Ticket</a>
         <a href="{{ url_for('repairs') }}">Storico riparazioni</a>
+        {% if current_user.is_authenticated and current_user.role == 'admin' %}
+            <a href="{{ url_for('admin_users') }}">Utenti</a>
+        {% endif %}
     </nav>
     <div class="auth-links">
         {% if current_user.is_authenticated %}

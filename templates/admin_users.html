@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+{% block title %}Gestione utenti{% endblock %}
+{% block content %}
+<h2>Utenti registrati</h2>
+<p>Visualizza l'elenco degli account registrati nell'applicazione.</p>
+{% if users %}
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Nome utente</th>
+            <th>Ruolo</th>
+            <th>Creato il</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for user in users %}
+        <tr>
+            <td>{{ user.id }}</td>
+            <td>{{ user.username }}</td>
+            <td>{{ user.role }}</td>
+            <td>{{ user.created_at }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+{% else %}
+<p class="info">Non sono ancora presenti utenti registrati.</p>
+{% endif %}
+{% endblock %}
