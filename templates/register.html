@@ -17,8 +17,6 @@
     </select>
     {% elif not admin_exists %}
     <p class="info">Non esiste ancora alcun amministratore: questo account sarà creato come amministratore.</p>
-    {% elif not has_users %}
-    <p class="info">Il primo account creato sarà amministratore.</p>
     {% endif %}
 
     <button type="submit">Registrati</button>
