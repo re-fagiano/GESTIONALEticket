@@ -33,5 +33,22 @@ CREATE TABLE IF NOT EXISTS tickets (
     date_returned DATE,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE
+    created_by INTEGER,
+    last_modified_by INTEGER,
+    FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+    FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL,
+    FOREIGN KEY (last_modified_by) REFERENCES users(id) ON DELETE SET NULL
+);
+
+-- Storico delle modifiche ai ticket per garantire la tracciabilità completa.
+CREATE TABLE IF NOT EXISTS ticket_history (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ticket_id INTEGER NOT NULL,
+    field TEXT NOT NULL,
+    old_value TEXT,
+    new_value TEXT,
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    changed_by INTEGER,
+    FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE,
+    FOREIGN KEY (changed_by) REFERENCES users(id) ON DELETE SET NULL
 );

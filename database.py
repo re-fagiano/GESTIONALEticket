@@ -49,4 +49,30 @@ def init_db():
     with open(schema_path, 'r', encoding='utf-8') as f:
         sql_script = f.read()
     db.executescript(sql_script)
+
+    # Migrazioni leggere per colonne aggiunte dopo il rilascio iniziale.
+    def _column_exists(table: str, column: str) -> bool:
+        rows = db.execute(f"PRAGMA table_info({table})").fetchall()
+        return any(row[1] == column for row in rows)
+
+    if not _column_exists('tickets', 'created_by'):
+        db.execute('ALTER TABLE tickets ADD COLUMN created_by INTEGER')
+    if not _column_exists('tickets', 'last_modified_by'):
+        db.execute('ALTER TABLE tickets ADD COLUMN last_modified_by INTEGER')
+
+    # Garantisce la presenza della tabella di storico modifiche.
+    db.execute(
+        'CREATE TABLE IF NOT EXISTS ticket_history ('
+        'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+        'ticket_id INTEGER NOT NULL, '
+        'field TEXT NOT NULL, '
+        'old_value TEXT, '
+        'new_value TEXT, '
+        'changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, '
+        'changed_by INTEGER, '
+        'FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE, '
+        'FOREIGN KEY (changed_by) REFERENCES users(id) ON DELETE SET NULL'
+        ')'
+    )
+
     db.commit()
