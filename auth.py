@@ -114,15 +114,22 @@ def logout():
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
     db = get_db()
-    user_count = db.execute('SELECT COUNT(*) AS count FROM users').fetchone()['count']
+    admin_exists = bool(
+        db.execute(
+            "SELECT 1 FROM users WHERE role = 'admin' LIMIT 1"
+        ).fetchone()
+    )
 
-    if user_count > 0 and (not current_user.is_authenticated or not getattr(current_user, 'is_admin', False)):
+    if admin_exists and (
+        not current_user.is_authenticated
+        or not getattr(current_user, 'is_admin', False)
+    ):
         flash('Solo un amministratore può creare nuovi utenti.', 'error')
         if current_user.is_authenticated:
             return redirect(url_for('index'))
         return redirect(url_for('auth.login'))
 
-    allow_role_selection = user_count > 0 and getattr(current_user, 'is_admin', False)
+    allow_role_selection = admin_exists and getattr(current_user, 'is_admin', False)
 
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
@@ -135,11 +142,9 @@ def register():
         if not password:
             errors.append('La password è obbligatoria.')
 
-        if user_count == 0:
+        if not admin_exists:
             role = 'admin'
-        elif not allow_role_selection:
-            role = 'user'
-        elif role not in {'admin', 'user'}:
+        elif not allow_role_selection or role not in {'admin', 'user'}:
             role = 'user'
 
         existing = db.execute(
@@ -165,6 +170,6 @@ def register():
     return render_template(
         'register.html',
         allow_role_selection=allow_role_selection,
-        has_users=user_count > 0,
+        admin_exists=admin_exists,
     )
 
