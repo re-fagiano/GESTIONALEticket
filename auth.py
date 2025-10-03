@@ -120,16 +120,9 @@ def register():
         ).fetchone()
     )
 
-    if admin_exists and (
-        not current_user.is_authenticated
-        or not getattr(current_user, 'is_admin', False)
-    ):
-        flash('Solo un amministratore può creare nuovi utenti.', 'error')
-        if current_user.is_authenticated:
-            return redirect(url_for('index'))
-        return redirect(url_for('auth.login'))
-
-    allow_role_selection = admin_exists and getattr(current_user, 'is_admin', False)
+    allow_role_selection = (
+        current_user.is_authenticated and getattr(current_user, 'is_admin', False)
+    )
 
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
