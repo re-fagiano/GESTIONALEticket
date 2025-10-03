@@ -188,6 +188,9 @@ def create_app() -> Flask:
                     )
                 )
                 ticket_id = cursor.lastrowid
+                initial_status_label = TICKET_STATUS_LABELS.get(
+                    DEFAULT_TICKET_STATUS, DEFAULT_TICKET_STATUS
+                )
                 db.execute(
                     'INSERT INTO ticket_history (ticket_id, field, old_value, new_value, changed_by) '
                     'VALUES (?, ?, ?, ?, ?)',
@@ -195,7 +198,7 @@ def create_app() -> Flask:
                         ticket_id,
                         '__created__',
                         None,
-                        f"Ticket creato (stato iniziale: {TICKET_STATUS_LABELS.get(DEFAULT_TICKET_STATUS, DEFAULT_TICKET_STATUS)})",
+                        f'Ticket creato (stato iniziale: {initial_status_label})',
                         current_user_id,
                     ),
                 )

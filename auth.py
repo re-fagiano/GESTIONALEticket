@@ -114,32 +114,17 @@ def logout():
 @bp.route('/register', methods=['GET', 'POST'])
 def register():
     db = get_db()
-    stats = db.execute(
-        """
-        SELECT
-            COUNT(*) AS total_users,
-            MAX(CASE WHEN role = 'admin' THEN 1 ELSE 0 END) AS admin_present
-        FROM users
-        """
-    ).fetchone()
-    if stats:
-        user_count = stats['total_users'] or 0
-        admin_exists = bool(stats['admin_present'])
-    else:
-        user_count = 0
-        admin_exists = False
+    admin_exists = bool(
+        db.execute(
+            "SELECT 1 FROM users WHERE role = 'admin' LIMIT 1",
+        ).fetchone()
+    )
+    user_count_row = db.execute('SELECT COUNT(*) AS count FROM users').fetchone()
+    user_count = int(user_count_row['count']) if user_count_row else 0
 
-    current_is_admin = (
+    allow_role_selection = (
         current_user.is_authenticated and getattr(current_user, 'is_admin', False)
     )
-
-    if admin_exists and not current_is_admin:
-        flash('Solo un amministratore può creare nuovi utenti.', 'error')
-        if current_user.is_authenticated:
-            return redirect(url_for('index'))
-        return redirect(url_for('auth.login'))
-
-    allow_role_selection = admin_exists and current_is_admin
 
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
