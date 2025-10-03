@@ -76,6 +76,15 @@ def create_app() -> Flask:
         return render_template('index.html', ticket_count=ticket_count,
                                customer_count=customer_count, repair_count=repair_count)
 
+    @app.route('/admin/users')
+    @admin_required
+    def admin_users():
+        db = get_db()
+        users = db.execute(
+            'SELECT id, username, role, created_at FROM users ORDER BY username'
+        ).fetchall()
+        return render_template('admin_users.html', users=users)
+
     # Lista clienti
     @app.route('/customers')
     @login_required
