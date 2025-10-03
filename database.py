@@ -75,4 +75,19 @@ def init_db():
         ')'
     )
 
+    # Tabella allegati: mantiene i metadati dei file salvati sul filesystem.
+    db.execute(
+        'CREATE TABLE IF NOT EXISTS ticket_attachments ('
+        'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+        'ticket_id INTEGER NOT NULL, '
+        'file_path TEXT NOT NULL, '
+        'original_name TEXT NOT NULL, '
+        'content_type TEXT, '
+        'uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, '
+        'uploaded_by INTEGER, '
+        'FOREIGN KEY (ticket_id) REFERENCES tickets(id) ON DELETE CASCADE, '
+        'FOREIGN KEY (uploaded_by) REFERENCES users(id) ON DELETE SET NULL'
+        ')'
+    )
+
     db.commit()

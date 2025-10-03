@@ -27,7 +27,29 @@
         {% endif %}
     </li>
 </ul>
-<form method="post" class="ticket-edit-form">
+<section class="ticket-attachments">
+    <h3>Allegati</h3>
+    {% if attachments %}
+    <ul class="attachment-list">
+        {% for attachment in attachments %}
+        <li>
+            <a href="{{ url_for('download_ticket_attachment', ticket_id=ticket['id'], attachment_id=attachment['id']) }}">
+                {{ attachment['original_name'] }}
+            </a>
+            <span class="meta">
+                Caricato il {{ attachment['uploaded_at'] }}
+                {% if attachment['uploaded_by_username'] %}
+                da {{ attachment['uploaded_by_username'] }}
+                {% endif %}
+            </span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p class="info">Nessun allegato caricato per questo ticket.</p>
+    {% endif %}
+</section>
+<form method="post" class="ticket-edit-form" enctype="multipart/form-data">
     <label for="status">Stato ticket</label>
     <select id="status" name="status" {% if not can_edit %}disabled{% endif %}>
         {% for value, label in ticket_statuses %}
@@ -59,11 +81,18 @@
     <input type="date" id="date_returned" name="date_returned" value="{{ ticket['date_returned'] or '' }}" {% if not can_edit %}readonly{% endif %}>
 
     {% if can_edit %}
+    <label for="attachments">Aggiungi allegati</label>
+    <input type="file" id="attachments" name="attachments" multiple>
     <button type="submit">Salva modifiche</button>
     {% else %}
     <p class="info">Solo un amministratore può modificare lo stato del ticket e i dati di riparazione.</p>
     {% endif %}
 </form>
+{% if can_edit %}
+<form method="post" action="{{ url_for('delete_ticket', ticket_id=ticket['id']) }}" class="ticket-delete-form" onsubmit="return confirm('Confermi l\'eliminazione del ticket? Gli allegati verranno rimossi definitivamente.');">
+    <button type="submit" class="danger">Elimina ticket</button>
+</form>
+{% endif %}
 
 <section class="ticket-history">
     <h3>Storico modifiche</h3>
