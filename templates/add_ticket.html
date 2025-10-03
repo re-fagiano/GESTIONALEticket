@@ -26,6 +26,9 @@
     <label for="issue_description">Descrizione problema</label>
     <textarea id="issue_description" name="issue_description" rows="4">{{ request.form.get('issue_description', '') }}</textarea>
 
+    <label for="payment_info">Informazioni pagamento</label>
+    <textarea id="payment_info" name="payment_info" rows="3" placeholder="Es. acconto, metodo di pagamento, note">{{ request.form.get('payment_info', '') }}</textarea>
+
     <label for="repair_status">Stato riparazione</label>
     <select id="repair_status" name="repair_status">
         {% for value, label in repair_statuses %}

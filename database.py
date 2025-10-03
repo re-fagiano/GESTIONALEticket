@@ -59,6 +59,8 @@ def init_db():
         db.execute('ALTER TABLE tickets ADD COLUMN created_by INTEGER')
     if not _column_exists('tickets', 'last_modified_by'):
         db.execute('ALTER TABLE tickets ADD COLUMN last_modified_by INTEGER')
+    if not _column_exists('tickets', 'payment_info'):
+        db.execute('ALTER TABLE tickets ADD COLUMN payment_info TEXT')
 
     # Garantisce la presenza della tabella di storico modifiche.
     db.execute(

@@ -17,6 +17,7 @@
 <ul>
     <li><strong>Oggetto:</strong> {{ ticket['subject'] }}</li>
     <li><strong>Descrizione:</strong> {{ ticket['description'] or 'N/A' }}</li>
+    <li><strong>Pagamento:</strong> {{ ticket['payment_info'] or 'N/A' }}</li>
     <li><strong>Creato il:</strong> {{ ticket['created_at'] }}</li>
     <li><strong>Creato da:</strong> {{ ticket['created_by_username'] or 'N/D' }}</li>
     <li>
@@ -41,6 +42,9 @@
 
     <label for="issue_description">Descrizione problema</label>
     <textarea id="issue_description" name="issue_description" rows="4" {% if not can_edit %}readonly{% endif %}>{{ ticket['issue_description'] or '' }}</textarea>
+
+    <label for="payment_info">Informazioni pagamento</label>
+    <textarea id="payment_info" name="payment_info" rows="3" {% if not can_edit %}readonly{% endif %}>{{ ticket['payment_info'] or '' }}</textarea>
 
     <label for="repair_status">Stato riparazione</label>
     <select id="repair_status" name="repair_status" {% if not can_edit %}disabled{% endif %}>
