@@ -11,6 +11,11 @@
             <strong>Stato:</strong>
             {% set status_slug = ticket['status']|replace('_', '-') %}
             <span class="badge badge-{{ status_slug }}">{{ ticket_status_labels.get(ticket['status'], ticket['status']) }}</span>
+            {% if last_status_change %}
+            <div class="status-meta">
+                <small>Ultimo cambio: {{ last_status_change['changed_at'] }}{% if last_status_change['changed_by_username'] %} ({{ last_status_change['changed_by_username'] }}){% endif %}</small>
+            </div>
+            {% endif %}
         </div>
     </div>
 </div>
@@ -59,6 +64,11 @@
         <option value="{{ value }}" {% if ticket['repair_status'] == value %}selected{% endif %}>{{ label }}</option>
         {% endfor %}
     </select>
+    {% if last_repair_status_change %}
+    <p class="status-meta">
+        <small>Ultimo cambio: {{ last_repair_status_change['changed_at'] }}{% if last_repair_status_change['changed_by_username'] %} ({{ last_repair_status_change['changed_by_username'] }}){% endif %}</small>
+    </p>
+    {% endif %}
 
     <label for="date_received">Data ricezione</label>
     <input type="date" id="date_received" name="date_received" value="{{ ticket['date_received'] or '' }}" {% if not can_edit %}readonly{% endif %}>

@@ -189,6 +189,46 @@ TICKET_HISTORY_FIELD_LABELS = {
 }
 
 
+def _fetch_latest_ticket_history_entries(
+    db,
+    ticket_ids: Iterable[int],
+    fields: Iterable[str],
+):
+    """Recupera l'ultima modifica registrata per i campi richiesti."""
+
+    unique_ids = [int(ticket_id) for ticket_id in dict.fromkeys(ticket_ids) if ticket_id]
+    unique_fields = [field for field in dict.fromkeys(fields) if field]
+
+    latest = {field: {} for field in unique_fields}
+
+    if not unique_ids or not unique_fields:
+        return latest
+
+    placeholders_ids = ','.join('?' for _ in unique_ids)
+    placeholders_fields = ','.join('?' for _ in unique_fields)
+
+    rows = db.execute(
+        f'''\
+        SELECT h.ticket_id, h.field, h.old_value, h.new_value, h.changed_at, u.username AS changed_by_username
+        FROM ticket_history h
+        LEFT JOIN users u ON h.changed_by = u.id
+        WHERE h.ticket_id IN ({placeholders_ids})
+          AND h.field IN ({placeholders_fields})
+        ORDER BY h.changed_at DESC, h.id DESC
+        ''',
+        (*unique_ids, *unique_fields),
+    ).fetchall()
+
+    for row in rows:
+        field = row['field']
+        ticket_id = row['ticket_id']
+        field_map = latest.setdefault(field, {})
+        if ticket_id not in field_map:
+            field_map[ticket_id] = row
+
+    return latest
+
+
 def create_app() -> Flask:
     """Factory per creare e configurare l'istanza di Flask."""
     app = Flask(__name__, instance_relative_config=True)
@@ -436,6 +476,36 @@ def create_app() -> Flask:
                     return redirect(url_for('customers'))
         return render_template('add_customer.html')
 
+    @app.route('/customers/<int:customer_id>/edit', methods=['GET', 'POST'])
+    @admin_required
+    def edit_customer(customer_id: int):
+        db = get_db()
+        customer = db.execute(
+            'SELECT id, name, email, phone, address FROM customers WHERE id = ?',
+            (customer_id,),
+        ).fetchone()
+        if customer is None:
+            flash('Cliente non trovato.', 'error')
+            return redirect(url_for('customers'))
+
+        if request.method == 'POST':
+            name = request.form.get('name', '').strip()
+            email = request.form.get('email', '').strip()
+            phone = request.form.get('phone', '').strip()
+            address = request.form.get('address', '').strip()
+            if not name:
+                flash('Il nome è obbligatorio.', 'error')
+            else:
+                db.execute(
+                    'UPDATE customers SET name = ?, email = ?, phone = ?, address = ? WHERE id = ?',
+                    (name, email or None, phone or None, address or None, customer_id),
+                )
+                db.commit()
+                flash('Cliente aggiornato con successo.', 'success')
+                return redirect(url_for('customers'))
+
+        return render_template('add_customer.html', customer=customer, is_edit=True)
+
     # Lista ticket
     @app.route('/tickets')
     @login_required
@@ -443,8 +513,13 @@ def create_app() -> Flask:
         db = get_db()
         selected_status = request.args.get('status', '').strip()
         query = (
-            'SELECT t.*, c.name AS customer_name, c.code AS customer_code '
-            'FROM tickets t JOIN customers c ON t.customer_id = c.id '
+            'SELECT t.*, c.name AS customer_name, '
+            'creator.username AS created_by_username, '
+            'modifier.username AS last_modified_by_username '
+            'FROM tickets t '
+            'JOIN customers c ON t.customer_id = c.id '
+            'LEFT JOIN users creator ON t.created_by = creator.id '
+            'LEFT JOIN users modifier ON t.last_modified_by = modifier.id '
         )
         params = ()
         if selected_status:
@@ -455,6 +530,13 @@ def create_app() -> Flask:
                 selected_status = None
         query += 'ORDER BY t.created_at DESC'
         tickets = db.execute(query, params).fetchall()
+
+        latest_history_entries = _fetch_latest_ticket_history_entries(
+            db,
+            (ticket['id'] for ticket in tickets),
+            ('status',),
+        )
+
         current_filters = {'status': selected_status} if selected_status else {}
         return render_template(
             'tickets.html',
@@ -463,6 +545,7 @@ def create_app() -> Flask:
             ticket_status_labels=TICKET_STATUS_LABELS,
             selected_status=selected_status,
             current_filters=current_filters,
+            latest_history_entries=latest_history_entries,
         )
 
     @app.route('/tickets/<int:ticket_id>/delete', methods=['POST'])
@@ -709,6 +792,12 @@ def create_app() -> Flask:
             flash('Ticket aggiornato con successo.', 'success')
             return redirect(url_for('ticket_detail', ticket_id=ticket_id))
 
+        latest_history_entries = _fetch_latest_ticket_history_entries(
+            db,
+            (ticket_id,),
+            ('status', 'repair_status'),
+        )
+
         attachments = db.execute(
             'SELECT a.id, a.original_filename, a.stored_filename, a.content_type, a.file_size, '
             'a.uploaded_at, u.username AS uploaded_by_username '
@@ -738,6 +827,8 @@ def create_app() -> Flask:
             history_entries=history_entries,
             attachments=attachments,
             ticket_history_field_labels=TICKET_HISTORY_FIELD_LABELS,
+            last_status_change=latest_history_entries.get('status', {}).get(ticket_id),
+            last_repair_status_change=latest_history_entries.get('repair_status', {}).get(ticket_id),
         )
 
     @app.route('/tickets/<int:ticket_id>/attachments/<int:attachment_id>/download')
@@ -977,13 +1068,23 @@ def create_app() -> Flask:
         where_clause = ' WHERE ' + ' AND '.join(filters) if filters else ''
 
         query = (
-            'SELECT t.*, c.name AS customer_name, c.code AS customer_code '
+            'SELECT t.*, c.name AS customer_name, '
+            'creator.username AS created_by_username, '
+            'modifier.username AS last_modified_by_username '
             'FROM tickets t '
             'JOIN customers c ON t.customer_id = c.id '
+            'LEFT JOIN users creator ON t.created_by = creator.id '
+            'LEFT JOIN users modifier ON t.last_modified_by = modifier.id '
             f'{where_clause} '
             'ORDER BY COALESCE(t.date_returned, t.updated_at) DESC, t.id DESC'
         )
         repairs = db.execute(query, params).fetchall()
+
+        latest_history_entries = _fetch_latest_ticket_history_entries(
+            db,
+            (repair['id'] for repair in repairs),
+            ('repair_status',),
+        )
 
         current_filters = {
             'status': selected_status,
@@ -997,6 +1098,7 @@ def create_app() -> Flask:
             repair_status_labels=REPAIR_STATUS_LABELS,
             repair_statuses=REPAIR_STATUSES,
             current_filters=current_filters,
+            latest_history_entries=latest_history_entries,
         )
 
     @app.route('/repairs/<int:ticket_id>/delete', methods=['POST'])
