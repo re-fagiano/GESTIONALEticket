@@ -177,6 +177,51 @@ Se il tuo sito è ospitato su un provider che offre solo hosting statico (solo H
 
 ## Backup di database e allegati
 
+Per condividere file come il database `database.db`, esportazioni CSV o eventuali allegati caricati dagli utenti è utile avere
+una cartella centralizzata su una macchina della rete locale.  In questo modo più postazioni possono effettuare backup o
+sincronizzare documenti senza doverli spostare manualmente.
+
+### Creare una cartella condivisa con Samba (Windows o Linux)
+
+1. **Preparare il server di condivisione.** Scegli un computer che rimanga acceso quando serve accedere ai file condivisi.
+   Su Linux installa i pacchetti `samba` e `samba-common` (`sudo apt install samba`). Su Windows puoi usare la condivisione di
+   rete integrata.
+2. **Creare la cartella da condividere.** Ad esempio `/srv/gestionale-share` su Linux oppure `C:\gestionale-share` su
+   Windows. Imposta i permessi in modo che l'utente del servizio Flask possa leggere/scrivere.
+3. **Configurare Samba.**
+   - Su Linux apri `/etc/samba/smb.conf` e aggiungi una sezione come:
+
+     ```ini
+     [gestionale]
+     path = /srv/gestionale-share
+     browseable = yes
+     read only = no
+     guest ok = no
+     valid users = gestionale
+     ```
+
+   - Crea l'utente Samba con `sudo smbpasswd -a gestionale` e riavvia il servizio (`sudo systemctl restart smbd`).
+   - Su Windows fai clic con il tasto destro sulla cartella, seleziona **Proprietà → Condivisione** e abilita la condivisione
+     con gli utenti autorizzati.
+4. **Montare la cartella sulle postazioni client.**
+   - Linux: `sudo mount -t cifs //SERVER/gestionale /mnt/gestionale -o username=gestionale` (aggiungi la riga corrispondente a
+     `/etc/fstab` per montarla automaticamente).
+   - Windows: in **Esplora file → Questo PC** scegli **Connetti unità di rete** e indica `\\SERVER\gestionale`.
+5. **Aggiornare l'applicazione.** Configura il tuo servizio Flask in modo che salvi file e backup all'interno del percorso
+   montato (ad es. impostando una variabile d'ambiente `STORAGE_PATH=/mnt/gestionale`). Assicurati che il processo abbia i
+   permessi di lettura/scrittura.
+
+### Alternative leggere
+
+- **Condivisione tramite NAS:** se possiedi un NAS, crea una cartella dedicata e utilizza SMB/NFS o WebDAV per accedervi.
+- **Servizi cloud con client di sincronizzazione:** OneDrive, Google Drive o Nextcloud possono sincronizzare una directory
+  locale sulla macchina che esegue Flask. Imposta il percorso sincronizzato come storage e verifica che il database non venga
+  bloccato durante l'uso (in caso contrario esegui backup periodici invece di lavorare sul file live).
+- **SSHFS/NFS per ambienti Linux:** monta la cartella remota con `sshfs` o `nfs` se preferisci protocolli Unix tradizionali.
+
+Qualunque soluzione tu scelga, ricorda di pianificare backup periodici (ad esempio con `cron` o l'Utilità di pianificazione di
+Windows) e di testare il ripristino dei file per assicurarti che i dati del gestionale siano sempre disponibili.
+
 Il database predefinito è un file SQLite chiamato `database.db` nella cartella principale del progetto.  Gli allegati caricati nei ticket vengono salvati nella cartella `instance/uploads/`, con una sottocartella per ogni ticket, percorso configurabile tramite la variabile `UPLOAD_FOLDER` nell’applicazione.【F:app.py†L37-L118】
 
 Per eseguire un backup completo puoi:

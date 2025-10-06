@@ -190,26 +190,6 @@ def create_app() -> Flask:
     if 'AI_SUGGESTION_DEEPSEEK_ENDPOINT' in os.environ:
         app.config['AI_SUGGESTION_DEEPSEEK_ENDPOINT'] = os.environ['AI_SUGGESTION_DEEPSEEK_ENDPOINT']
 
-    # Determina automaticamente il provider AI quando possibile. Questo evita che
-    # l'app resti in modalità "generic" (che richiede un endpoint esterno) anche
-    # quando è presente una API key di OpenAI o DeepSeek.
-    provider = (app.config.get('AI_SUGGESTION_PROVIDER') or '').strip().lower()
-    if provider in {'', 'generic', 'auto'}:
-        # Se è stato configurato un endpoint personalizzato lasciamo la modalità
-        # "generic" inalterata per non sovrascrivere l'intenzione dell'utente.
-        if not app.config.get('AI_SUGGESTION_ENDPOINT'):
-            deepseek_key = (
-                app.config.get('AI_SUGGESTION_TOKEN')
-                or os.environ.get('DEEPSEEK_API_KEY')
-            )
-            if deepseek_key:
-                # Assicura che la chiave sia disponibile per il provider DeepSeek
-                # anche quando è impostata solo tramite variabile d'ambiente.
-                app.config.setdefault('AI_SUGGESTION_TOKEN', deepseek_key)
-                app.config['AI_SUGGESTION_PROVIDER'] = 'deepseek'
-            elif os.environ.get('OPENAI_API_KEY') or app.config.get('AI_SUGGESTION_TOKEN'):
-                app.config['AI_SUGGESTION_PROVIDER'] = 'openai'
-
     # Garantisce che le directory per i file di istanza e gli upload esistano.
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
     Path(app.config['UPLOAD_FOLDER']).mkdir(parents=True, exist_ok=True)
