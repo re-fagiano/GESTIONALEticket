@@ -25,6 +25,7 @@
         <td>{{ customer['address'] or '-' }}</td>
         {% if current_user.is_authenticated and current_user.is_admin %}
         <td class="actions-column">
+            <a class="button" href="{{ url_for('edit_customer', customer_id=customer['id']) }}" style="margin-right: 0.5rem;">Modifica</a>
             <form method="post"
                   action="{{ url_for('delete_customer', customer_id=customer['id']) }}"
                   class="inline-form"

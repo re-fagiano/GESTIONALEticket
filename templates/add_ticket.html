@@ -3,13 +3,29 @@
 {% block content %}
 <h2>Crea ticket</h2>
 <form method="post" enctype="multipart/form-data">
-    <label for="customer_id">Cliente *</label>
-    <select id="customer_id" name="customer_id" required>
-        <option value="">-- seleziona --</option>
+    <label for="customer_search">Cliente *</label>
+    <input type="hidden" id="customer_id" data-name="customer_id" value="{{ request.form.get('customer_id', '') }}">
+    <input type="text"
+           id="customer_search"
+           name="customer_search"
+           list="customer_list"
+           placeholder="Inizia a digitare per cercare un cliente"
+           autocomplete="off"
+           required
+           value="{{ request.form.get('customer_search', '') }}">
+    <datalist id="customer_list">
         {% for customer in customers %}
-        <option value="{{ customer['id'] }}">{{ customer['name'] }}</option>
+        <option value="{{ customer['name'] }}" data-id="{{ customer['id'] }}"></option>
         {% endfor %}
-    </select>
+    </datalist>
+    <noscript>
+        <select id="customer_id_noscript" name="customer_id" required>
+            <option value="">-- seleziona --</option>
+            {% for customer in customers %}
+            <option value="{{ customer['id'] }}">{{ customer['name'] }}</option>
+            {% endfor %}
+        </select>
+    </noscript>
 
     <label for="subject">Oggetto *</label>
     <input type="text" id="subject" name="subject" required>
@@ -66,4 +82,65 @@
 
     <button type="submit">Salva</button>
 </form>
+<script>
+    (function() {
+        const searchInput = document.getElementById('customer_search');
+        const hiddenInput = document.getElementById('customer_id');
+        const datalist = document.getElementById('customer_list');
+        if (!searchInput || !hiddenInput || !datalist) {
+            return;
+        }
+
+        hiddenInput.name = hiddenInput.dataset.name || 'customer_id';
+
+        const options = Array.from(datalist.options);
+
+        function findOptionByValue(value) {
+            const normalized = value.trim().toLowerCase();
+            if (!normalized) {
+                return null;
+            }
+            return options.find((option) => option.value.trim().toLowerCase() === normalized) || null;
+        }
+
+        function updateHiddenFromSearch() {
+            const match = findOptionByValue(searchInput.value);
+            if (match) {
+                hiddenInput.value = match.dataset.id || '';
+                searchInput.setCustomValidity('');
+            } else {
+                hiddenInput.value = '';
+                if (searchInput.value.trim()) {
+                    searchInput.setCustomValidity('Seleziona un cliente dall\'elenco.');
+                } else {
+                    searchInput.setCustomValidity('Questo campo è obbligatorio.');
+                }
+            }
+        }
+
+        searchInput.addEventListener('change', updateHiddenFromSearch);
+        searchInput.addEventListener('input', () => {
+            hiddenInput.value = '';
+            searchInput.setCustomValidity('');
+        });
+
+        const form = searchInput.form;
+        if (form) {
+            form.addEventListener('submit', (event) => {
+                updateHiddenFromSearch();
+                if (!hiddenInput.value) {
+                    event.preventDefault();
+                    searchInput.reportValidity();
+                }
+            });
+        }
+
+        if (hiddenInput.value) {
+            const current = options.find((option) => option.dataset.id === hiddenInput.value);
+            if (current) {
+                searchInput.value = current.value;
+            }
+        }
+    })();
+</script>
 {% endblock %}
