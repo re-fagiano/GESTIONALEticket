@@ -119,7 +119,11 @@ La risposta deve restituire un campo `suggestion`, ad esempio:
 }
 ```
 
-Se l’endpoint non è configurato l’applicazione mostra l’errore “Servizio AI non configurato”.
+Se imposti solo la chiave `OPENAI_API_KEY` o `DEEPSEEK_API_KEY` l’applicazione passa
+automaticamente al provider corrispondente (senza bisogno di definire
+`AI_SUGGESTION_PROVIDER`). Se, invece, preferisci integrare un servizio esterno
+ricordati di indicare `AI_SUGGESTION_ENDPOINT`: in assenza di un endpoint
+esplicito continuerai a vedere l’errore “Servizio AI non configurato”.
 
 ### Aggiornamento degli stati di riparazione esistenti
 
