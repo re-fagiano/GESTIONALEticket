@@ -44,6 +44,68 @@ Questo progetto è un semplice gestionale a ticket pensato per officine o centri
 
    Per impostazione predefinita l’applicazione è disponibile all’indirizzo `http://127.0.0.1:5000/`.
 
+## Configurare le risposte dell'AI
+
+Il pulsante **Chiedi all’AI** invia una richiesta POST all’endpoint `/ai/suggest`. L’applicazione, a sua volta, inoltra i dettagli del ticket a un servizio esterno o a OpenAI per ottenere un consiglio tecnico sintetico e professionale. È possibile configurare l’integrazione in due modi:
+
+1. **Variabili d’ambiente** – impostare i parametri prima di avviare Flask:
+
+   ```bash
+   export AI_SUGGESTION_ENDPOINT="https://example.com/api/suggest"
+   export AI_SUGGESTION_TOKEN="il-tuo-token-opzionale"
+   export AI_SUGGESTION_TIMEOUT=20  # secondi, opzionale
+   flask --app app.py run --reload
+   ```
+
+2. **File di configurazione** – creare `instance/config.py` (la cartella viene generata automaticamente al primo avvio) con i valori desiderati:
+
+   ```python
+   AI_SUGGESTION_ENDPOINT = "https://example.com/api/suggest"
+   AI_SUGGESTION_TOKEN = "il-tuo-token-opzionale"
+   AI_SUGGESTION_TIMEOUT = 20
+   ```
+
+### Utilizzare direttamente OpenAI
+
+Se preferisci sfruttare l’API di OpenAI (chiave in formato `sk-...`) senza dover esporre un servizio intermedio, imposta il provider `openai`. L’applicazione invierà ai modelli di OpenAI il contesto del ticket accompagnato da un prompt di sistema che li istruisce ad agire come "un tecnico di elettrodomestici esperto che fa diagnosi in maniera sintetica e professionale".
+
+```bash
+export AI_SUGGESTION_PROVIDER=openai
+export AI_SUGGESTION_TOKEN="sk-..."
+# facoltativo: esporta OPENAI_API_KEY se preferisci non usare AI_SUGGESTION_TOKEN
+# export OPENAI_API_KEY="sk-..."
+# facoltativo: scegli un altro modello supportato (es. gpt-4o-mini)
+# export AI_SUGGESTION_OPENAI_MODEL="gpt-4o-mini"
+flask --app app.py run --reload
+```
+
+È possibile personalizzare il messaggio di sistema impostando `AI_SUGGESTION_SYSTEM_PROMPT` via variabile d’ambiente o nel file `instance/config.py`. In questo modo potrai adattare il tono delle risposte alle tue esigenze.
+
+### Payload per servizi personalizzati
+
+Se utilizzi un endpoint personalizzato, il servizio riceve un payload come questo:
+
+```json
+{
+  "target": "issue_description",
+  "subject": "Notebook HP",
+  "product": "HP ProBook 450",
+  "issue_description": "Schermo che lampeggia in modo intermittente",
+  "description": "Il cliente segnala che il problema si presenta dopo qualche minuto di utilizzo.",
+  "requested_by": "nome_utente"
+}
+```
+
+La risposta deve restituire un campo `suggestion`, ad esempio:
+
+```json
+{
+  "suggestion": "Verificare i driver della scheda video e testare con un monitor esterno." 
+}
+```
+
+Se l’endpoint non è configurato l’applicazione mostra l’errore “Servizio AI non configurato”.
+
 ### Aggiornamento degli stati di riparazione esistenti
 
 Se stai aggiornando un database già in uso, esegui lo script nella cartella `migrations/` per rimappare i vecchi stati (`accettazione`, `preventivo`, `pronta`, `riconsegnata`, ecc.) sui nuovi valori.  Questo evita discrepanze tra i dati salvati e le nuove opzioni disponibili nell’interfaccia.

@@ -58,19 +58,43 @@ TICKET_HISTORY_FIELD_LABELS = {
 def create_app() -> Flask:
     """Factory per creare e configurare l'istanza di Flask."""
     app = Flask(__name__, instance_relative_config=True)
-    # Chiave segreta per il sistema di messaggistica flash
-    app.config['SECRET_KEY'] = 'change-me-please'
-    # Percorso del database: per default è nella stessa directory del file app
-    app.config.setdefault('DATABASE', str(Path(app.root_path) / 'database.db'))
-    app.config.setdefault('UPLOAD_FOLDER', str(Path(app.instance_path) / 'uploads'))
-    app.config.setdefault('MAX_CONTENT_LENGTH', 16 * 1024 * 1024)
-    app.config.setdefault('AI_SUGGESTION_ENDPOINT', os.environ.get('AI_SUGGESTION_ENDPOINT'))
-    app.config.setdefault('AI_SUGGESTION_TOKEN', os.environ.get('AI_SUGGESTION_TOKEN'))
-    try:
-        default_timeout = int(os.environ.get('AI_SUGGESTION_TIMEOUT', '15'))
-    except (TypeError, ValueError):
-        default_timeout = 15
-    app.config.setdefault('AI_SUGGESTION_TIMEOUT', default_timeout)
+    # Configurazione di default caricata direttamente nell'applicazione
+    app.config.from_mapping(
+        SECRET_KEY='change-me-please',
+        DATABASE=str(Path(app.root_path) / 'database.db'),
+        UPLOAD_FOLDER=str(Path(app.instance_path) / 'uploads'),
+        MAX_CONTENT_LENGTH=16 * 1024 * 1024,
+        AI_SUGGESTION_ENDPOINT=None,
+        AI_SUGGESTION_TOKEN=None,
+        AI_SUGGESTION_TIMEOUT=15,
+        AI_SUGGESTION_PROVIDER='generic',
+        AI_SUGGESTION_SYSTEM_PROMPT=(
+            'Sei un tecnico di elettrodomestici esperto. '
+            'Fornisci diagnosi sintetiche e professionali in italiano '
+            'sulla base delle informazioni del ticket.'
+        ),
+        AI_SUGGESTION_OPENAI_MODEL='gpt-3.5-turbo',
+    )
+
+    # Consente di sovrascrivere i valori tramite instance/config.py
+    app.config.from_pyfile('config.py', silent=True)
+
+    # Le variabili d'ambiente hanno la precedenza finale
+    if 'AI_SUGGESTION_ENDPOINT' in os.environ:
+        app.config['AI_SUGGESTION_ENDPOINT'] = os.environ['AI_SUGGESTION_ENDPOINT']
+    if 'AI_SUGGESTION_TOKEN' in os.environ:
+        app.config['AI_SUGGESTION_TOKEN'] = os.environ['AI_SUGGESTION_TOKEN']
+    if 'AI_SUGGESTION_TIMEOUT' in os.environ:
+        try:
+            app.config['AI_SUGGESTION_TIMEOUT'] = int(os.environ['AI_SUGGESTION_TIMEOUT'])
+        except (TypeError, ValueError):
+            pass
+    if 'AI_SUGGESTION_PROVIDER' in os.environ:
+        app.config['AI_SUGGESTION_PROVIDER'] = os.environ['AI_SUGGESTION_PROVIDER']
+    if 'AI_SUGGESTION_SYSTEM_PROMPT' in os.environ:
+        app.config['AI_SUGGESTION_SYSTEM_PROMPT'] = os.environ['AI_SUGGESTION_SYSTEM_PROMPT']
+    if 'AI_SUGGESTION_OPENAI_MODEL' in os.environ:
+        app.config['AI_SUGGESTION_OPENAI_MODEL'] = os.environ['AI_SUGGESTION_OPENAI_MODEL']
 
     # Garantisce che le directory per i file di istanza e gli upload esistano.
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
@@ -612,43 +636,114 @@ def create_app() -> Flask:
         if not any([subject, product, issue_description, description]):
             return jsonify({'error': 'Fornire almeno un dettaglio per generare un suggerimento.'}), 400
 
-        endpoint = app.config.get('AI_SUGGESTION_ENDPOINT')
-        if not endpoint:
-            return jsonify({'error': 'Servizio AI non configurato.'}), 503
+        provider = (app.config.get('AI_SUGGESTION_PROVIDER') or 'generic').lower()
 
-        headers = {'Content-Type': 'application/json'}
-        token = app.config.get('AI_SUGGESTION_TOKEN')
-        if token:
-            headers['Authorization'] = f'Bearer {token}'
-
-        external_payload = {
-            'target': target,
-            'subject': subject,
-            'product': product,
-            'issue_description': issue_description,
-            'description': description,
-            'requested_by': getattr(current_user, 'username', None),
-        }
-
-        try:
-            response = requests.post(
-                endpoint,
-                json=external_payload,
-                headers=headers,
-                timeout=app.config.get('AI_SUGGESTION_TIMEOUT', 15),
+        if provider == 'openai':
+            api_key = (
+                app.config.get('AI_SUGGESTION_TOKEN')
+                or os.environ.get('OPENAI_API_KEY')
             )
-            response.raise_for_status()
-        except requests.exceptions.Timeout:
-            return jsonify({'error': 'Il servizio AI non ha risposto in tempo.'}), 504
-        except requests.exceptions.RequestException:
-            return jsonify({'error': 'Errore nella comunicazione con il servizio AI.'}), 502
+            if not api_key:
+                return jsonify({'error': 'API key OpenAI non configurata.'}), 503
 
-        try:
-            data = response.json()
-        except ValueError:
-            return jsonify({'error': 'Risposta non valida dal servizio AI.'}), 502
+            system_prompt = (
+                app.config.get('AI_SUGGESTION_SYSTEM_PROMPT')
+                or 'Sei un tecnico di elettrodomestici esperto.'
+            )
+            details = []
+            if subject:
+                details.append(f"Oggetto: {subject}")
+            if product:
+                details.append(f"Prodotto: {product}")
+            if issue_description:
+                details.append(f"Problema segnalato: {issue_description}")
+            if description:
+                details.append(f"Dettagli aggiuntivi: {description}")
+            if not details:
+                details.append('Non sono disponibili informazioni aggiuntive.')
 
-        suggestion = (data.get('suggestion') or data.get('content') or '').strip()
+            user_prompt = (
+                'Fornisci una diagnosi sintetica e professionale per il seguente ticket.'
+                '\n' + '\n'.join(details)
+            )
+
+            payload = {
+                'model': app.config.get('AI_SUGGESTION_OPENAI_MODEL', 'gpt-3.5-turbo'),
+                'messages': [
+                    {'role': 'system', 'content': system_prompt},
+                    {'role': 'user', 'content': user_prompt},
+                ],
+                'temperature': 0.2,
+            }
+
+            try:
+                response = requests.post(
+                    'https://api.openai.com/v1/chat/completions',
+                    json=payload,
+                    headers={
+                        'Content-Type': 'application/json',
+                        'Authorization': f'Bearer {api_key}',
+                    },
+                    timeout=app.config.get('AI_SUGGESTION_TIMEOUT', 15),
+                )
+                response.raise_for_status()
+            except requests.exceptions.Timeout:
+                return jsonify({'error': 'Il servizio AI non ha risposto in tempo.'}), 504
+            except requests.exceptions.RequestException:
+                return jsonify({'error': 'Errore nella comunicazione con il servizio AI.'}), 502
+
+            try:
+                data = response.json()
+            except ValueError:
+                return jsonify({'error': 'Risposta non valida dal servizio AI.'}), 502
+
+            if data.get('error'):
+                message = data['error'].get('message') if isinstance(data['error'], dict) else str(data['error'])
+                return jsonify({'error': message or 'Errore dal servizio OpenAI.'}), 502
+
+            choices = data.get('choices') or []
+            if not choices:
+                return jsonify({'error': 'Nessun suggerimento disponibile dal servizio AI.'}), 502
+
+            suggestion = (choices[0].get('message', {}).get('content') or '').strip()
+        else:
+            endpoint = app.config.get('AI_SUGGESTION_ENDPOINT')
+            if not endpoint:
+                return jsonify({'error': 'Servizio AI non configurato.'}), 503
+
+            headers = {'Content-Type': 'application/json'}
+            token = app.config.get('AI_SUGGESTION_TOKEN')
+            if token:
+                headers['Authorization'] = f'Bearer {token}'
+
+            external_payload = {
+                'target': target,
+                'subject': subject,
+                'product': product,
+                'issue_description': issue_description,
+                'description': description,
+                'requested_by': getattr(current_user, 'username', None),
+            }
+
+            try:
+                response = requests.post(
+                    endpoint,
+                    json=external_payload,
+                    headers=headers,
+                    timeout=app.config.get('AI_SUGGESTION_TIMEOUT', 15),
+                )
+                response.raise_for_status()
+            except requests.exceptions.Timeout:
+                return jsonify({'error': 'Il servizio AI non ha risposto in tempo.'}), 504
+            except requests.exceptions.RequestException:
+                return jsonify({'error': 'Errore nella comunicazione con il servizio AI.'}), 502
+
+            try:
+                data = response.json()
+            except ValueError:
+                return jsonify({'error': 'Risposta non valida dal servizio AI.'}), 502
+
+            suggestion = (data.get('suggestion') or data.get('content') or '').strip()
         if not suggestion:
             return jsonify({'error': 'Nessun suggerimento disponibile dal servizio AI.'}), 502
 
