@@ -124,10 +124,7 @@ def create_app() -> Flask:
             'Fornisci diagnosi sintetiche e professionali in italiano '
             'sulla base delle informazioni del ticket.'
         ),
-        AI_SUGGESTION_OPENAI_MODEL='gpt-4o-mini',
-        AI_SUGGESTION_OPENAI_BASE_URL='https://api.openai.com/v1',
-        AI_SUGGESTION_OPENAI_AUTH_HEADER='Authorization',
-        AI_SUGGESTION_OPENAI_ORG=None,
+      AI_SUGGESTION_OPENAI_MODEL='gpt-3.5-turbo',
     )
 
     # Consente di sovrascrivere i valori tramite instance/config.py
@@ -149,20 +146,6 @@ def create_app() -> Flask:
         app.config['AI_SUGGESTION_SYSTEM_PROMPT'] = os.environ['AI_SUGGESTION_SYSTEM_PROMPT']
     if 'AI_SUGGESTION_OPENAI_MODEL' in os.environ:
         app.config['AI_SUGGESTION_OPENAI_MODEL'] = os.environ['AI_SUGGESTION_OPENAI_MODEL']
-    if 'AI_SUGGESTION_OPENAI_BASE_URL' in os.environ:
-        app.config['AI_SUGGESTION_OPENAI_BASE_URL'] = os.environ['AI_SUGGESTION_OPENAI_BASE_URL']
-    if 'AI_SUGGESTION_OPENAI_AUTH_HEADER' in os.environ:
-        app.config['AI_SUGGESTION_OPENAI_AUTH_HEADER'] = os.environ['AI_SUGGESTION_OPENAI_AUTH_HEADER']
-    if 'AI_SUGGESTION_OPENAI_ORG' in os.environ:
-        app.config['AI_SUGGESTION_OPENAI_ORG'] = os.environ['AI_SUGGESTION_OPENAI_ORG']
-
-    openai_token = app.config.get('AI_SUGGESTION_TOKEN') or os.environ.get('OPENAI_API_KEY')
-    if (
-        (app.config.get('AI_SUGGESTION_PROVIDER') or 'generic').lower() == 'generic'
-        and openai_token
-        and openai_token.startswith('sk-')
-    ):
-        app.config['AI_SUGGESTION_PROVIDER'] = 'openai'
 
     # Garantisce che le directory per i file di istanza e gli upload esistano.
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
@@ -735,160 +718,45 @@ def create_app() -> Flask:
                 '\n' + '\n'.join(details)
             )
 
-            model = app.config.get('AI_SUGGESTION_OPENAI_MODEL', 'gpt-4o-mini')
-            timeout = app.config.get('AI_SUGGESTION_TIMEOUT', 15)
-            base_url = (
-                app.config.get('AI_SUGGESTION_OPENAI_BASE_URL')
-                or os.environ.get('OPENAI_BASE_URL')
-                or 'https://api.openai.com/v1'
-            ).rstrip('/')
-
-            auth_header = (
-                app.config.get('AI_SUGGESTION_OPENAI_AUTH_HEADER')
-                or 'Authorization'
-            )
-
-            headers = {'Content-Type': 'application/json'}
-            header_key = auth_header.strip()
-            if header_key:
-                if header_key.lower() == 'authorization':
-                    headers[header_key] = f'Bearer {api_key}'
-                else:
-                    headers[header_key] = api_key
-            else:
-                header_key = 'Authorization'
-                headers[header_key] = f'Bearer {api_key}'
-
-            organization = (
-                app.config.get('AI_SUGGESTION_OPENAI_ORG')
-                or os.environ.get('OPENAI_ORG_ID')
-                or os.environ.get('OPENAI_ORGANIZATION')
-            )
-            if organization and header_key.lower() == 'authorization':
-                headers['OpenAI-Organization'] = organization
-
-            openai_errors = []
-            suggestion = ''
-
-            # Variante 1: endpoint Responses (nuovi modelli, es. gpt-4o-mini)
-            responses_payload = {
-                'model': model,
-                'input': [
-                    {
-                        'role': 'system',
-                        'content': [
-                            {'type': 'text', 'text': system_prompt},
-                        ],
-                    },
-                    {
-                        'role': 'user',
-                        'content': [
-                            {'type': 'text', 'text': user_prompt},
-                        ],
-                    },
+            payload = {
+                'model': app.config.get('AI_SUGGESTION_OPENAI_MODEL', 'gpt-3.5-turbo'),
+                'messages': [
+                    {'role': 'system', 'content': system_prompt},
+                    {'role': 'user', 'content': user_prompt},
                 ],
                 'temperature': 0.2,
             }
 
-            for endpoint_suffix, payload_builder in (
-                ('responses', lambda: responses_payload),
-                (
-                    'chat/completions',
-                    lambda: {
-                        'model': model,
-                        'messages': [
-                            {'role': 'system', 'content': system_prompt},
-                            {'role': 'user', 'content': user_prompt},
-                        ],
-                        'temperature': 0.2,
+            try:
+                response = requests.post(
+                    'https://api.openai.com/v1/chat/completions',
+                    json=payload,
+                    headers={
+                        'Content-Type': 'application/json',
+                        'Authorization': f'Bearer {api_key}',
                     },
-                ),
-            ):
-                endpoint_url = f"{base_url}/{endpoint_suffix}"
-                payload = payload_builder()
+                    timeout=app.config.get('AI_SUGGESTION_TIMEOUT', 15),
+                )
+                response.raise_for_status()
+            except requests.exceptions.Timeout:
+                return jsonify({'error': 'Il servizio AI non ha risposto in tempo.'}), 504
+            except requests.exceptions.RequestException:
+                return jsonify({'error': 'Errore nella comunicazione con il servizio AI.'}), 502
 
-                try:
-                    response = requests.post(
-                        endpoint_url,
-                        json=payload,
-                        headers=headers,
-                        timeout=timeout,
-                    )
-                except requests.exceptions.Timeout:
-                    return jsonify({'error': 'Il servizio AI non ha risposto in tempo.'}), 504
-                except requests.exceptions.RequestException:
-                    return jsonify({'error': 'Errore nella comunicazione con il servizio AI.'}), 502
+            try:
+                data = response.json()
+            except ValueError:
+                return jsonify({'error': 'Risposta non valida dal servizio AI.'}), 502
 
-                try:
-                    response.raise_for_status()
-                except requests.exceptions.HTTPError:
-                    message = None
-                    try:
-                        error_data = response.json()
-                    except ValueError:
-                        error_data = None
-                    if isinstance(error_data, dict) and error_data.get('error'):
-                        error_field = error_data['error']
-                        if isinstance(error_field, dict):
-                            message = error_field.get('message') or error_field.get('code')
-                        else:
-                            message = str(error_field)
-                    if message:
-                        openai_errors.append(message)
-                    else:
-                        openai_errors.append('Errore dal servizio OpenAI.')
+            if data.get('error'):
+                message = data['error'].get('message') if isinstance(data['error'], dict) else str(data['error'])
+                return jsonify({'error': message or 'Errore dal servizio OpenAI.'}), 502
 
-                    if endpoint_suffix == 'responses':
-                        # Prova il vecchio endpoint /chat/completions come fallback
-                        continue
-                    status_code = response.status_code
-                    if 400 <= status_code < 500:
-                        return jsonify({'error': message or 'Errore dal servizio OpenAI.'}), status_code
-                    return jsonify({'error': message or 'Errore dal servizio AI.'}), 502
-
-                try:
-                    data = response.json()
-                except ValueError:
-                    openai_errors.append('Risposta non valida dal servizio OpenAI.')
-                    if endpoint_suffix == 'responses':
-                        continue
-                    return jsonify({'error': 'Risposta non valida dal servizio AI.'}), 502
-
-                if isinstance(data, dict) and data.get('error'):
-                    error_field = data['error']
-                    if isinstance(error_field, dict):
-                        message = error_field.get('message')
-                    else:
-                        message = str(error_field)
-                    if message:
-                        openai_errors.append(message)
-                    if endpoint_suffix == 'responses':
-                        continue
-                    return jsonify({'error': message or 'Errore dal servizio OpenAI.'}), 502
-
-                if endpoint_suffix == 'responses':
-                    suggestion = _extract_openai_responses_text(data)
-                    if not suggestion:
-                        openai_errors.append('Risposta vuota dal servizio OpenAI (endpoint responses).')
-                        continue
-                else:
-                    choices = data.get('choices') or []
-                    if choices:
-                        suggestion = (
-                            choices[0]
-                            .get('message', {})
-                            .get('content', '')
-                        ).strip()
-                    else:
-                        openai_errors.append('Nessun suggerimento disponibile dal servizio OpenAI.')
-
-                if suggestion:
-                    break
-
-            if not suggestion:
-                if openai_errors:
-                    return jsonify({'error': openai_errors[-1]}), 502
+            choices = data.get('choices') or []
+            if not choices:
                 return jsonify({'error': 'Nessun suggerimento disponibile dal servizio AI.'}), 502
+
+            suggestion = (choices[0].get('message', {}).get('content') or '').strip()
         else:
             endpoint = app.config.get('AI_SUGGESTION_ENDPOINT')
             if not endpoint:

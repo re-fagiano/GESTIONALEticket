@@ -67,20 +67,19 @@ Il pulsante **Chiedi all’AI** invia una richiesta POST all’endpoint `/ai/sug
 
 ### Utilizzare direttamente OpenAI
 
-Se preferisci sfruttare l’API di OpenAI (chiave in formato `sk-...`) senza dover esporre un servizio intermedio, imposta il provider `openai`. Quando troviamo automaticamente una chiave che inizia con `sk-` e non hai specificato un provider, l’applicazione sceglie da sola quello OpenAI. Le richieste utilizzano il nuovo endpoint **Responses API** con il modello `gpt-4o-mini` e un prompt di sistema che istruisce il modello ad agire come "un tecnico di elettrodomestici esperto che fa diagnosi in maniera sintetica e professionale".
+Se preferisci sfruttare l’API di OpenAI (chiave in formato `sk-...`) senza dover esporre un servizio intermedio, imposta il provider `openai`. L’applicazione invierà ai modelli di OpenAI il contesto del ticket accompagnato da un prompt di sistema che li istruisce ad agire come "un tecnico di elettrodomestici esperto che fa diagnosi in maniera sintetica e professionale".
 
 ```bash
-export AI_SUGGESTION_PROVIDER=openai          # facoltativo se la chiave è in formato sk-...
-export AI_SUGGESTION_TOKEN="sk-..."           # oppure usa OPENAI_API_KEY
-# export OPENAI_API_KEY="sk-..."             # se preferisci non configurare AI_SUGGESTION_TOKEN
-# export AI_SUGGESTION_OPENAI_MODEL="gpt-4o-mini"  # cambia modello se necessario
-# export AI_SUGGESTION_OPENAI_BASE_URL="https://api.openai.com/v1"
-# export AI_SUGGESTION_OPENAI_AUTH_HEADER="Authorization"  # es. "api-key" per Azure OpenAI
-# export AI_SUGGESTION_OPENAI_ORG="org_..."   # opzionale, se usi organizzazioni OpenAI
+export AI_SUGGESTION_PROVIDER=openai
+export AI_SUGGESTION_TOKEN="sk-..."
+# facoltativo: esporta OPENAI_API_KEY se preferisci non usare AI_SUGGESTION_TOKEN
+# export OPENAI_API_KEY="sk-..."
+# facoltativo: scegli un altro modello supportato (es. gpt-4o-mini)
+# export AI_SUGGESTION_OPENAI_MODEL="gpt-4o-mini"
 flask --app app.py run --reload
 ```
 
-L’app prova prima l’endpoint `/responses` e, se il modello richiede ancora l’interfaccia classica, effettua il fallback automatico a `/chat/completions`. È possibile personalizzare il messaggio di sistema impostando `AI_SUGGESTION_SYSTEM_PROMPT` via variabile d’ambiente o nel file `instance/config.py`.
+È possibile personalizzare il messaggio di sistema impostando `AI_SUGGESTION_SYSTEM_PROMPT` via variabile d’ambiente o nel file `instance/config.py`. In questo modo potrai adattare il tono delle risposte alle tue esigenze.
 
 ### Payload per servizi personalizzati
 
@@ -143,3 +142,40 @@ Questo gestionale è pensato come base da cui partire.  Alcune idee per evolverl
 - Inviare notifiche automatiche via email quando cambia lo stato di un ticket o una riparazione.
 
 Con questo progetto si ha una base funzionante che può essere adattata alle esigenze specifiche del proprio contesto.
+
+## Pubblicazione su un sito web esistente
+
+L’applicazione è sviluppata con Flask e necessita quindi di un server che possa eseguire codice Python lato backend.  Non può essere caricata direttamente come una semplice pagina HTML statica: per integrarla nel tuo sito devi ospitarla su un servizio che permetta processi Python (ad esempio un VPS, un servizio PaaS come Heroku/Render, oppure un server aziendale interno) e poi collegare il dominio del tuo sito all’istanza dell’applicazione tramite proxy o iframe.【F:app.py†L37-L82】
+
+Una configurazione tipica prevede:
+
+1. Distribuire il codice su un server con Python installato.
+2. Installare le dipendenze (`pip install -r requirements.txt`) e inizializzare il database come descritto sopra.
+3. Eseguire l’app con un application server (es. `gunicorn "app:create_app()"`) dietro a un reverse proxy Nginx/Apache che risponde al tuo dominio.
+4. Collegare dal sito principale un link o un iframe all’indirizzo pubblico dell’applicazione.
+
+Se il tuo sito è ospitato su un provider che offre solo hosting statico (solo HTML/CSS/JS), dovrai affiancare al sito una soluzione separata per il backend e poi integrare l’interfaccia del gestionale tramite link o embed.
+
+## Backup di database e allegati
+
+Il database predefinito è un file SQLite chiamato `database.db` nella cartella principale del progetto.  Gli allegati caricati nei ticket vengono salvati nella cartella `instance/uploads/`, con una sottocartella per ogni ticket, percorso configurabile tramite la variabile `UPLOAD_FOLDER` nell’applicazione.【F:app.py†L37-L118】
+
+Per eseguire un backup completo puoi:
+
+1. Fermare l’applicazione (o assicurarti che non stia scrivendo dati) per evitare file parziali.
+2. Copiare il file `database.db` e l’intera cartella `instance/uploads/` in una destinazione sicura (ad esempio un disco esterno, un NAS o un archivio cloud).
+3. Ripetere l’operazione periodicamente o automatizzarla con uno script/cron job.
+
+Su sistemi Linux puoi utilizzare un semplice script bash:
+
+```bash
+#!/bin/bash
+set -euo pipefail
+DATA=$(date +%Y%m%d_%H%M)
+DEST="/percorso/del/backup/$DATA"
+mkdir -p "$DEST"
+cp -a database.db "$DEST/"
+cp -a instance/uploads "$DEST/uploads"
+```
+
+In questo modo manterrai una copia aggiornata sia dei dati strutturati sia dei documenti allegati ai ticket.
