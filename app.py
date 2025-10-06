@@ -70,6 +70,18 @@ def _extract_openai_responses_text(data: dict) -> str:
                         block_type = (block.get('type') or '').lower()
                         if block_type in {'output_text', 'text'}:
                             _push(block.get('text'))
+                        elif block_type == 'message':
+                            _push(block.get('content'))
+                        elif block_type == 'input_text':
+                            nested = block.get('content')
+                            if isinstance(nested, list):
+                                for nested_block in nested:
+                                    if isinstance(nested_block, dict):
+                                        _push(nested_block.get('text') or nested_block.get('content'))
+                                    else:
+                                        _push(str(nested_block))
+                            else:
+                                _push(nested)
                         else:
                             _push(block.get('content'))
                     else:
@@ -762,8 +774,18 @@ def create_app() -> Flask:
             responses_payload = {
                 'model': model,
                 'input': [
-                    {'role': 'system', 'content': system_prompt},
-                    {'role': 'user', 'content': user_prompt},
+                    {
+                        'role': 'system',
+                        'content': [
+                            {'type': 'text', 'text': system_prompt},
+                        ],
+                    },
+                    {
+                        'role': 'user',
+                        'content': [
+                            {'type': 'text', 'text': user_prompt},
+                        ],
+                    },
                 ],
                 'temperature': 0.2,
             }
