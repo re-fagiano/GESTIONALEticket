@@ -42,6 +42,57 @@ REPAIR_STATUS_LABELS = {value: label for value, label in REPAIR_STATUSES}
 REPAIR_STATUS_VALUES = set(REPAIR_STATUS_LABELS)
 DEFAULT_REPAIR_STATUS = REPAIR_STATUSES[0][0]
 
+
+def _extract_openai_responses_text(data: dict) -> str:
+    """Estrae il testo utile dalla risposta dell'endpoint /responses di OpenAI."""
+
+    fragments: List[str] = []
+
+    def _push(value: Optional[str]) -> None:
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped:
+                fragments.append(stripped)
+
+    output = data.get('output')
+    if isinstance(output, list):
+        for item in output:
+            if not isinstance(item, dict):
+                continue
+
+            _push(item.get('text'))
+            _push(item.get('output_text'))
+
+            content = item.get('content')
+            if isinstance(content, list):
+                for block in content:
+                    if isinstance(block, dict):
+                        block_type = (block.get('type') or '').lower()
+                        if block_type in {'output_text', 'text'}:
+                            _push(block.get('text'))
+                        elif block_type == 'message':
+                            _push(block.get('content'))
+                        elif block_type == 'input_text':
+                            nested = block.get('content')
+                            if isinstance(nested, list):
+                                for nested_block in nested:
+                                    if isinstance(nested_block, dict):
+                                        _push(nested_block.get('text') or nested_block.get('content'))
+                                    else:
+                                        _push(str(nested_block))
+                            else:
+                                _push(nested)
+                        else:
+                            _push(block.get('content'))
+                    else:
+                        _push(str(block))
+            else:
+                _push(content)
+
+    _push(data.get('output_text'))
+
+    return '\n'.join(fragments).strip()
+
 TICKET_HISTORY_FIELD_LABELS = {
     '__created__': 'Creazione ticket',
     'status': 'Stato ticket',
@@ -73,7 +124,7 @@ def create_app() -> Flask:
             'Fornisci diagnosi sintetiche e professionali in italiano '
             'sulla base delle informazioni del ticket.'
         ),
-        AI_SUGGESTION_OPENAI_MODEL='gpt-3.5-turbo',
+      AI_SUGGESTION_OPENAI_MODEL='gpt-3.5-turbo',
     )
 
     # Consente di sovrascrivere i valori tramite instance/config.py

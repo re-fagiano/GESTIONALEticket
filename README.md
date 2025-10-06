@@ -4,8 +4,8 @@ Questo progetto è un semplice gestionale a ticket pensato per officine o centri
 
 ## Funzionalità principali
 
-- **Anagrafica clienti:** memorizza i dati anagrafici di ciascun cliente (nome, email, telefono, indirizzo) in modo da poterli richiamare rapidamente quando si crea un ticket【212499813267287†L162-L169】.
-- **Gestione dei ticket:** permette di aprire nuovi ticket, associare un cliente al ticket, inserire l’oggetto e la descrizione del problema, e aggiornarne lo stato (es. aperto, in lavorazione, risolto)【212499813267287†L150-L159】. Ogni ticket è identificato da un numero univoco e registra automaticamente la data di apertura【395316353871554†L139-L147】.
+- **Anagrafica clienti:** memorizza i dati anagrafici di ciascun cliente (nome, email, telefono, indirizzo) in modo da poterli richiamare rapidamente quando si crea un ticket.
+- **Gestione dei ticket:** permette di aprire nuovi ticket, associare un cliente al ticket, inserire l’oggetto e la descrizione del problema, e aggiornarne lo stato (es. aperto, in lavorazione, risolto). Ogni ticket è identificato da un numero univoco e registra automaticamente la data di apertura.
 - **Tracciamento delle riparazioni:** per interventi su hardware o dispositivi, è possibile registrare i dettagli della riparazione (prodotto, problema riscontrato, date di consegna/ritiro, ecc.) e aggiornare lo stato della riparazione (diagnosticato, preventivo pronto, preventivo accettato, intervento completato).
 - **Interfaccia web semplice:** l’applicazione fornisce pagine HTML con moduli per inserire e modificare dati e tabelle per visualizzare l’elenco di clienti, ticket e riparazioni.  In futuro è possibile espanderla con funzionalità di ricerca, assegnazione a tecnici specifici o invio di email ai clienti.
 
@@ -136,9 +136,9 @@ Per verificare la corretta gestione dei campi obbligatori nella creazione di una
 Questo gestionale è pensato come base da cui partire.  Alcune idee per evolverlo:
 
 - Implementare l’autenticazione per gli operatori (login e autorizzazioni).
-- Aggiungere la gestione dei tecnici e l’assegnazione dei ticket a persone specifiche【212499813267287†L170-L176】.
+- Aggiungere la gestione dei tecnici e l’assegnazione dei ticket a persone specifiche.
 - Integrare funzioni di ricerca e filtri avanzati per lo stato dei ticket o la cronologia dei clienti.
-- Esportare report e statistiche sui tempi di risoluzione, volume di ticket e prestazioni degli operatori【395316353871554†L210-L276】.
+- Esportare report e statistiche sui tempi di risoluzione, volume di ticket e prestazioni degli operatori.
 - Inviare notifiche automatiche via email quando cambia lo stato di un ticket o una riparazione.
 
 Con questo progetto si ha una base funzionante che può essere adattata alle esigenze specifiche del proprio contesto.
