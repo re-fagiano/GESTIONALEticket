@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
 -- Tabella clienti.  Ogni cliente ha un identificativo univoco e dati anagrafici.
 CREATE TABLE IF NOT EXISTS customers (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,
     name TEXT NOT NULL,
     email TEXT,
     phone TEXT,

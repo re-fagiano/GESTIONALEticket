@@ -62,6 +62,34 @@ def init_db():
     if not _column_exists('tickets', 'payment_info'):
         db.execute('ALTER TABLE tickets ADD COLUMN payment_info TEXT')
 
+    if not _column_exists('customers', 'code'):
+        db.execute('ALTER TABLE customers ADD COLUMN code TEXT')
+        db.execute(
+            """
+            WITH ordered AS (
+                SELECT id,
+                       ROW_NUMBER() OVER (ORDER BY id) - 1 AS rn
+                FROM customers
+            )
+            UPDATE customers
+            SET code = (
+                SELECT char(
+                    97 + ((rn / 17576) % 26),
+                    97 + ((rn / 676) % 26),
+                    97 + ((rn / 26) % 26),
+                    97 + (rn % 26)
+                )
+                FROM ordered
+                WHERE ordered.id = customers.id
+            )
+            WHERE code IS NULL OR code = ''
+            """
+        )
+
+    db.execute(
+        'CREATE UNIQUE INDEX IF NOT EXISTS idx_customers_code ON customers(code)'
+    )
+
     # Garantisce la presenza della tabella di storico modifiche.
     db.execute(
         'CREATE TABLE IF NOT EXISTS ticket_history ('
