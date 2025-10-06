@@ -382,6 +382,36 @@ def create_app() -> Flask:
                 return redirect(url_for('customers'))
         return render_template('add_customer.html')
 
+    @app.route('/customers/<int:customer_id>/edit', methods=['GET', 'POST'])
+    @admin_required
+    def edit_customer(customer_id: int):
+        db = get_db()
+        customer = db.execute(
+            'SELECT id, name, email, phone, address FROM customers WHERE id = ?',
+            (customer_id,),
+        ).fetchone()
+        if customer is None:
+            flash('Cliente non trovato.', 'error')
+            return redirect(url_for('customers'))
+
+        if request.method == 'POST':
+            name = request.form.get('name', '').strip()
+            email = request.form.get('email', '').strip()
+            phone = request.form.get('phone', '').strip()
+            address = request.form.get('address', '').strip()
+            if not name:
+                flash('Il nome è obbligatorio.', 'error')
+            else:
+                db.execute(
+                    'UPDATE customers SET name = ?, email = ?, phone = ?, address = ? WHERE id = ?',
+                    (name, email or None, phone or None, address or None, customer_id),
+                )
+                db.commit()
+                flash('Cliente aggiornato con successo.', 'success')
+                return redirect(url_for('customers'))
+
+        return render_template('add_customer.html', customer=customer, is_edit=True)
+
     # Lista ticket
     @app.route('/tickets')
     @login_required
