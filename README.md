@@ -79,6 +79,21 @@ export AI_SUGGESTION_TOKEN="sk-..."
 flask --app app.py run --reload
 ```
 
+### Utilizzare DeepSeek
+
+Per le chiavi fornite da DeepSeek (`sk-...`) imposta il provider `deepseek`. L’integrazione utilizza l’endpoint ufficiale di DeepSeek per le chat completion, con il modello predefinito `deepseek-chat` (personalizzabile tramite `AI_SUGGESTION_DEEPSEEK_MODEL`).
+
+```bash
+export AI_SUGGESTION_PROVIDER=deepseek
+export AI_SUGGESTION_TOKEN="sk-..."
+# in alternativa puoi impostare DEEPSEEK_API_KEY invece del token precedente
+# export DEEPSEEK_API_KEY="sk-..."
+# opzionale: definisci un endpoint o modello personalizzato
+# export AI_SUGGESTION_DEEPSEEK_ENDPOINT="https://api.deepseek.com/v1/chat/completions"
+# export AI_SUGGESTION_DEEPSEEK_MODEL="deepseek-chat"
+flask --app app.py run --reload
+```
+
 È possibile personalizzare il messaggio di sistema impostando `AI_SUGGESTION_SYSTEM_PROMPT` via variabile d’ambiente o nel file `instance/config.py`. In questo modo potrai adattare il tono delle risposte alle tue esigenze.
 
 ### Payload per servizi personalizzati

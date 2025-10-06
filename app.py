@@ -93,6 +93,43 @@ def _extract_openai_responses_text(data: dict) -> str:
 
     return '\n'.join(fragments).strip()
 
+
+def _build_ai_prompts(
+    system_prompt: Optional[str],
+    subject: str,
+    product: str,
+    issue_description: str,
+    description: str,
+) -> Tuple[str, str]:
+    """Costruisce il prompt di sistema e dell'utente per i suggerimenti AI."""
+
+    effective_system_prompt = (
+        system_prompt
+        or 'Sei un tecnico di elettrodomestici esperto. '
+        'Fornisci diagnosi sintetiche e professionali in italiano '
+        'sulla base delle informazioni del ticket.'
+    )
+
+    details: List[str] = []
+    if subject:
+        details.append(f"Oggetto: {subject}")
+    if product:
+        details.append(f"Prodotto: {product}")
+    if issue_description:
+        details.append(f"Problema segnalato: {issue_description}")
+    if description:
+        details.append(f"Dettagli aggiuntivi: {description}")
+    if not details:
+        details.append('Non sono disponibili informazioni aggiuntive.')
+
+    user_prompt = (
+        'Fornisci una diagnosi sintetica e professionale per il seguente ticket.'
+        '\n' + '\n'.join(details)
+    )
+
+    return effective_system_prompt, user_prompt
+
+
 TICKET_HISTORY_FIELD_LABELS = {
     '__created__': 'Creazione ticket',
     'status': 'Stato ticket',
@@ -124,7 +161,9 @@ def create_app() -> Flask:
             'Fornisci diagnosi sintetiche e professionali in italiano '
             'sulla base delle informazioni del ticket.'
         ),
-      AI_SUGGESTION_OPENAI_MODEL='gpt-3.5-turbo',
+        AI_SUGGESTION_OPENAI_MODEL='gpt-3.5-turbo',
+        AI_SUGGESTION_DEEPSEEK_MODEL='deepseek-chat',
+        AI_SUGGESTION_DEEPSEEK_ENDPOINT='https://api.deepseek.com/v1/chat/completions',
     )
 
     # Consente di sovrascrivere i valori tramite instance/config.py
@@ -146,6 +185,10 @@ def create_app() -> Flask:
         app.config['AI_SUGGESTION_SYSTEM_PROMPT'] = os.environ['AI_SUGGESTION_SYSTEM_PROMPT']
     if 'AI_SUGGESTION_OPENAI_MODEL' in os.environ:
         app.config['AI_SUGGESTION_OPENAI_MODEL'] = os.environ['AI_SUGGESTION_OPENAI_MODEL']
+    if 'AI_SUGGESTION_DEEPSEEK_MODEL' in os.environ:
+        app.config['AI_SUGGESTION_DEEPSEEK_MODEL'] = os.environ['AI_SUGGESTION_DEEPSEEK_MODEL']
+    if 'AI_SUGGESTION_DEEPSEEK_ENDPOINT' in os.environ:
+        app.config['AI_SUGGESTION_DEEPSEEK_ENDPOINT'] = os.environ['AI_SUGGESTION_DEEPSEEK_ENDPOINT']
 
     # Garantisce che le directory per i file di istanza e gli upload esistano.
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
@@ -697,25 +740,12 @@ def create_app() -> Flask:
             if not api_key:
                 return jsonify({'error': 'API key OpenAI non configurata.'}), 503
 
-            system_prompt = (
-                app.config.get('AI_SUGGESTION_SYSTEM_PROMPT')
-                or 'Sei un tecnico di elettrodomestici esperto.'
-            )
-            details = []
-            if subject:
-                details.append(f"Oggetto: {subject}")
-            if product:
-                details.append(f"Prodotto: {product}")
-            if issue_description:
-                details.append(f"Problema segnalato: {issue_description}")
-            if description:
-                details.append(f"Dettagli aggiuntivi: {description}")
-            if not details:
-                details.append('Non sono disponibili informazioni aggiuntive.')
-
-            user_prompt = (
-                'Fornisci una diagnosi sintetica e professionale per il seguente ticket.'
-                '\n' + '\n'.join(details)
+            system_prompt, user_prompt = _build_ai_prompts(
+                app.config.get('AI_SUGGESTION_SYSTEM_PROMPT'),
+                subject,
+                product,
+                issue_description,
+                description,
             )
 
             payload = {
@@ -751,6 +781,66 @@ def create_app() -> Flask:
             if data.get('error'):
                 message = data['error'].get('message') if isinstance(data['error'], dict) else str(data['error'])
                 return jsonify({'error': message or 'Errore dal servizio OpenAI.'}), 502
+
+            choices = data.get('choices') or []
+            if not choices:
+                return jsonify({'error': 'Nessun suggerimento disponibile dal servizio AI.'}), 502
+
+            suggestion = (choices[0].get('message', {}).get('content') or '').strip()
+        elif provider == 'deepseek':
+            api_key = (
+                app.config.get('AI_SUGGESTION_TOKEN')
+                or os.environ.get('DEEPSEEK_API_KEY')
+            )
+            if not api_key:
+                return jsonify({'error': 'API key DeepSeek non configurata.'}), 503
+
+            system_prompt, user_prompt = _build_ai_prompts(
+                app.config.get('AI_SUGGESTION_SYSTEM_PROMPT'),
+                subject,
+                product,
+                issue_description,
+                description,
+            )
+
+            payload = {
+                'model': app.config.get('AI_SUGGESTION_DEEPSEEK_MODEL', 'deepseek-chat'),
+                'messages': [
+                    {'role': 'system', 'content': system_prompt},
+                    {'role': 'user', 'content': user_prompt},
+                ],
+                'temperature': 0.2,
+            }
+
+            endpoint = (
+                app.config.get('AI_SUGGESTION_DEEPSEEK_ENDPOINT')
+                or 'https://api.deepseek.com/v1/chat/completions'
+            )
+
+            try:
+                response = requests.post(
+                    endpoint,
+                    json=payload,
+                    headers={
+                        'Content-Type': 'application/json',
+                        'Authorization': f'Bearer {api_key}',
+                    },
+                    timeout=app.config.get('AI_SUGGESTION_TIMEOUT', 15),
+                )
+                response.raise_for_status()
+            except requests.exceptions.Timeout:
+                return jsonify({'error': 'Il servizio AI non ha risposto in tempo.'}), 504
+            except requests.exceptions.RequestException:
+                return jsonify({'error': 'Errore nella comunicazione con il servizio AI.'}), 502
+
+            try:
+                data = response.json()
+            except ValueError:
+                return jsonify({'error': 'Risposta non valida dal servizio AI.'}), 502
+
+            if data.get('error'):
+                message = data['error'].get('message') if isinstance(data['error'], dict) else str(data['error'])
+                return jsonify({'error': message or 'Errore dal servizio DeepSeek.'}), 502
 
             choices = data.get('choices') or []
             if not choices:
