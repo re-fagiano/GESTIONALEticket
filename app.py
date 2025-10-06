@@ -43,6 +43,11 @@ REPAIR_STATUS_VALUES = set(REPAIR_STATUS_LABELS)
 DEFAULT_REPAIR_STATUS = REPAIR_STATUSES[0][0]
 
 
+CUSTOMER_CODE_ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
+CUSTOMER_CODE_LENGTH = 4
+MAX_CUSTOMER_CODES = len(CUSTOMER_CODE_ALPHABET) ** CUSTOMER_CODE_LENGTH
+
+
 def _extract_openai_responses_text(data: dict) -> str:
     """Estrae il testo utile dalla risposta dell'endpoint /responses di OpenAI."""
 
@@ -92,6 +97,47 @@ def _extract_openai_responses_text(data: dict) -> str:
     _push(data.get('output_text'))
 
     return '\n'.join(fragments).strip()
+
+
+def _customer_code_to_int(code: str) -> int:
+    normalized = (code or '').strip().lower()
+    if len(normalized) != CUSTOMER_CODE_LENGTH:
+        raise ValueError('Codice cliente non valido.')
+
+    value = 0
+    base = len(CUSTOMER_CODE_ALPHABET)
+    for char in normalized:
+        if char not in CUSTOMER_CODE_ALPHABET:
+            raise ValueError('Codice cliente non valido.')
+        value = value * base + (ord(char) - ord('a'))
+    return value
+
+
+def _int_to_customer_code(value: int) -> str:
+    if not 0 <= value < MAX_CUSTOMER_CODES:
+        raise ValueError('Valore codice cliente fuori intervallo.')
+
+    base = len(CUSTOMER_CODE_ALPHABET)
+    chars = ['a'] * CUSTOMER_CODE_LENGTH
+    for index in range(CUSTOMER_CODE_LENGTH - 1, -1, -1):
+        chars[index] = chr(ord('a') + (value % base))
+        value //= base
+    return ''.join(chars)
+
+
+def _generate_next_customer_code(db) -> str:
+    row = db.execute(
+        'SELECT code FROM customers '
+        "WHERE code IS NOT NULL AND code != '' ORDER BY code DESC LIMIT 1"
+    ).fetchone()
+    if row is None or not row['code']:
+        return _int_to_customer_code(0)
+
+    current_value = _customer_code_to_int(row['code'])
+    next_value = current_value + 1
+    if next_value >= MAX_CUSTOMER_CODES:
+        raise ValueError('Limite massimo per i codici cliente raggiunto.')
+    return _int_to_customer_code(next_value)
 
 
 def _build_ai_prompts(
@@ -337,7 +383,7 @@ def create_app() -> Flask:
     @login_required
     def customers():
         db = get_db()
-        customers = db.execute('SELECT * FROM customers ORDER BY name').fetchall()
+        customers = db.execute('SELECT * FROM customers ORDER BY code').fetchall()
         return render_template('customers.html', customers=customers)
 
     @app.route('/customers/<int:customer_id>/delete', methods=['POST'])
@@ -373,13 +419,21 @@ def create_app() -> Flask:
                 flash('Il nome è obbligatorio.', 'error')
             else:
                 db = get_db()
-                db.execute(
-                    'INSERT INTO customers (name, email, phone, address) VALUES (?, ?, ?, ?)',
-                    (name, email or None, phone or None, address or None)
-                )
-                db.commit()
-                flash('Cliente aggiunto con successo.', 'success')
-                return redirect(url_for('customers'))
+                try:
+                    code = _generate_next_customer_code(db)
+                except ValueError:
+                    flash('Impossibile generare un nuovo codice cliente: limite massimo raggiunto.', 'error')
+                else:
+                    db.execute(
+                        'INSERT INTO customers (code, name, email, phone, address) VALUES (?, ?, ?, ?, ?)',
+                        (code, name, email or None, phone or None, address or None)
+                    )
+                    db.commit()
+                    flash(
+                        f'Cliente aggiunto con successo (codice {code.upper()}).',
+                        'success',
+                    )
+                    return redirect(url_for('customers'))
         return render_template('add_customer.html')
 
     # Lista ticket
@@ -389,7 +443,7 @@ def create_app() -> Flask:
         db = get_db()
         selected_status = request.args.get('status', '').strip()
         query = (
-            'SELECT t.*, c.name AS customer_name '
+            'SELECT t.*, c.name AS customer_name, c.code AS customer_code '
             'FROM tickets t JOIN customers c ON t.customer_id = c.id '
         )
         params = ()
@@ -509,7 +563,7 @@ def create_app() -> Flask:
                 flash(success_message, 'success')
                 return redirect(url_for('tickets'))
         # Per GET (o se form incompleto), recupera elenco clienti per la select
-        customers = db.execute('SELECT id, name FROM customers ORDER BY name').fetchall()
+        customers = db.execute('SELECT id, name, code FROM customers ORDER BY name').fetchall()
         return render_template(
             'add_ticket.html',
             customers=customers,
@@ -523,7 +577,7 @@ def create_app() -> Flask:
     def ticket_detail(ticket_id: int):
         db = get_db()
         ticket = db.execute(
-            'SELECT t.*, c.name AS customer_name, '
+            'SELECT t.*, c.name AS customer_name, c.code AS customer_code, '
             'creator.username AS created_by_username, '
             'modifier.username AS last_modified_by_username '
             'FROM tickets t '
@@ -923,7 +977,7 @@ def create_app() -> Flask:
         where_clause = ' WHERE ' + ' AND '.join(filters) if filters else ''
 
         query = (
-            'SELECT t.*, c.name AS customer_name '
+            'SELECT t.*, c.name AS customer_name, c.code AS customer_code '
             'FROM tickets t '
             'JOIN customers c ON t.customer_id = c.id '
             f'{where_clause} '

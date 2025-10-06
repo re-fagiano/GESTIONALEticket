@@ -6,7 +6,7 @@
 <div class="ticket-header">
     <h2>Ticket #{{ ticket_number }}</h2>
     <div class="ticket-header-details">
-        <div><strong>Cliente:</strong> {{ ticket['customer_name'] }}</div>
+        <div><strong>Cliente:</strong> {{ ticket['customer_code']|upper }} - {{ ticket['customer_name'] }}</div>
         <div>
             <strong>Stato:</strong>
             {% set status_slug = ticket['status']|replace('_', '-') %}

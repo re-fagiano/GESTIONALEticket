@@ -31,7 +31,7 @@
     <tr>
         <td><a href="{{ url_for('ticket_detail', ticket_id=ticket['id']) }}">{{ '%04d'|format(ticket['id']) }}</a></td>
         <td>
-            <div class="ticket-customer">{{ ticket['customer_name'] }}</div>
+            <div class="ticket-customer">{{ ticket['customer_code']|upper }} - {{ ticket['customer_name'] }}</div>
             {% set status_slug = ticket['status']|replace('_', '-') %}
             <div class="ticket-status">
                 <span class="badge badge-{{ status_slug }}">{{ ticket_status_labels.get(ticket['status'], ticket['status']) }}</span>

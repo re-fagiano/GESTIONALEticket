@@ -7,7 +7,7 @@
     <select id="customer_id" name="customer_id" required>
         <option value="">-- seleziona --</option>
         {% for customer in customers %}
-        <option value="{{ customer['id'] }}">{{ customer['name'] }}</option>
+        <option value="{{ customer['id'] }}">{{ customer['code']|upper }} - {{ customer['name'] }}</option>
         {% endfor %}
     </select>
 

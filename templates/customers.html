@@ -7,6 +7,7 @@
 <table>
     <thead>
     <tr>
+        <th>Codice</th>
         <th>Nome</th>
         <th>Email</th>
         <th>Telefono</th>
@@ -19,6 +20,7 @@
     <tbody>
     {% for customer in customers %}
     <tr>
+        <td class="customer-code">{{ customer['code']|upper }}</td>
         <td>{{ customer['name'] }}</td>
         <td>{{ customer['email'] or '-' }}</td>
         <td>{{ customer['phone'] or '-' }}</td>
