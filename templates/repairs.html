@@ -66,6 +66,14 @@
         <td>
             {% set status_label = repair_status_labels.get(repair['repair_status'], repair['repair_status'] or 'N/A') %}
             <span class="badge badge-{{ repair_status_slug if repair_status_slug else 'pending' }}">{{ status_label }}</span>
+            {% set status_change = (latest_history_entries.get('repair_status') or {}).get(repair['id']) %}
+            <div class="status-meta">
+                {% if status_change %}
+                <small>Aggiornato il {{ status_change['changed_at'] }}{% if status_change['changed_by_username'] %} da {{ status_change['changed_by_username'] }}{% endif %}</small>
+                {% else %}
+                <small>Creato il {{ repair['created_at'] }}{% if repair['created_by_username'] %} da {{ repair['created_by_username'] }}{% endif %}</small>
+                {% endif %}
+            </div>
         </td>
         <td>{{ repair['date_received'] or '-' }}</td>
         <td>{{ repair['date_repaired'] or '-' }}</td>

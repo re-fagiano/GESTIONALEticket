@@ -36,6 +36,14 @@
             <div class="ticket-status">
                 <span class="badge badge-{{ status_slug }}">{{ ticket_status_labels.get(ticket['status'], ticket['status']) }}</span>
             </div>
+            {% set status_change = (latest_history_entries.get('status') or {}).get(ticket['id']) %}
+            <div class="status-meta">
+                {% if status_change %}
+                <small>Aggiornato il {{ status_change['changed_at'] }}{% if status_change['changed_by_username'] %} da {{ status_change['changed_by_username'] }}{% endif %}</small>
+                {% else %}
+                <small>Creato il {{ ticket['created_at'] }}{% if ticket['created_by_username'] %} da {{ ticket['created_by_username'] }}{% endif %}</small>
+                {% endif %}
+            </div>
         </td>
         <td>{{ ticket['subject'] }}</td>
         <td>{{ ticket['created_at'] }}</td>
