@@ -104,9 +104,7 @@ Il progetto include un'integrazione opzionale con Google Calendar per importare 
 
 1. Crea un progetto in [Google Cloud Console](https://console.cloud.google.com/) e abilita l'API **Google Calendar**.
 2. Nella sezione *API & Services → Credentials* crea un client OAuth di tipo **Desktop**.
-3. Scarica il file JSON del client e salvalo come `instance/google_calendar_credentials.json`. La cartella `instance/` si trova nella radice del progetto (allo stesso livello di `app.py`); se non esiste ancora creala manualmente con `mkdir -p instance`. In alternativa imposta la variabile d'ambiente `GOOGLE_CALENDAR_CREDENTIALS_FILE` con il percorso al file.
-
-> **Suggerimento**: la cartella `instance/` è pensata per contenere segreti e dati locali, quindi non va versionata con git.
+3. Scarica il file JSON del client e salvalo come `instance/google_calendar_credentials.json` (la cartella `instance/` viene generata automaticamente al primo avvio dell'app). In alternativa imposta la variabile d'ambiente `GOOGLE_CALENDAR_CREDENTIALS_FILE` con il percorso al file.
 
 Al primo avvio verrà creato automaticamente `instance/google_calendar_token.json`, che contiene il token di aggiornamento. Puoi personalizzare la posizione del file impostando `GOOGLE_CALENDAR_TOKEN_FILE`.
 
