@@ -96,6 +96,39 @@ flask --app app.py run --reload
 
 È possibile personalizzare il messaggio di sistema impostando `AI_SUGGESTION_SYSTEM_PROMPT` via variabile d’ambiente o nel file `instance/config.py`. In questo modo potrai adattare il tono delle risposte alle tue esigenze.
 
+## Sincronizzazione clienti da Google Calendar
+
+Il progetto include un'integrazione opzionale con Google Calendar per importare automaticamente i contatti dei clienti a partire dagli eventi programmati. Il flusso si basa su OAuth2 e memorizza in locale il token di accesso, rinnovandolo automaticamente quando scade.
+
+### Preparazione delle credenziali
+
+1. Crea un progetto in [Google Cloud Console](https://console.cloud.google.com/) e abilita l'API **Google Calendar**.
+2. Nella sezione *API & Services → Credentials* crea un client OAuth di tipo **Desktop**.
+3. Scarica il file JSON del client e salvalo come `instance/google_calendar_credentials.json` (la cartella `instance/` viene generata automaticamente al primo avvio dell'app). In alternativa imposta la variabile d'ambiente `GOOGLE_CALENDAR_CREDENTIALS_FILE` con il percorso al file.
+
+Al primo avvio verrà creato automaticamente `instance/google_calendar_token.json`, che contiene il token di aggiornamento. Puoi personalizzare la posizione del file impostando `GOOGLE_CALENDAR_TOKEN_FILE`.
+
+### Parametri di configurazione
+
+| Variabile | Descrizione | Valore predefinito |
+| --- | --- | --- |
+| `GOOGLE_CALENDAR_ID` | ID del calendario da interrogare (es. `primary` o indirizzo email) | `primary` |
+| `GOOGLE_CALENDAR_SCOPES` | Scopes OAuth richiesti, separati da virgole | `https://www.googleapis.com/auth/calendar.readonly` |
+| `GOOGLE_CALENDAR_CREDENTIALS_FILE` | Percorso del file di credenziali OAuth | `instance/google_calendar_credentials.json` |
+| `GOOGLE_CALENDAR_TOKEN_FILE` | Percorso del token memorizzato localmente | `instance/google_calendar_token.json` |
+
+Puoi definire gli stessi valori anche in `instance/config.py`.
+
+### Avvio della sincronizzazione
+
+Il job CLI `jobs/sync_calendar_customers.py` recupera gli eventi del calendario, ne estrae i dati anagrafici (nome, email, telefono, indirizzo) e li converte in record `Customer`. La deduplicazione avviene per email, telefono e, in ultima istanza, per nome. Esempio di esecuzione:
+
+```bash
+python -m jobs.sync_calendar_customers --past-days 60 --future-days 7 --max-results 500
+```
+
+Il comando apre il flusso OAuth in modalità console (fornendo un URL da visitare e un codice da incollare). Per usare il browser locale aggiungi `--local-server`. Il token viene riutilizzato automaticamente nelle esecuzioni successive.
+
 ### Payload per servizi personalizzati
 
 Se utilizzi un endpoint personalizzato, il servizio riceve un payload come questo:

@@ -21,6 +21,8 @@ from auth import admin_required, bp as auth_bp, login_manager
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
+from services.customer_codes import generate_next_customer_code
+
 
 TICKET_STATUSES = [
     ("open", "Aperto"),
@@ -41,11 +43,6 @@ REPAIR_STATUSES = [
 REPAIR_STATUS_LABELS = {value: label for value, label in REPAIR_STATUSES}
 REPAIR_STATUS_VALUES = set(REPAIR_STATUS_LABELS)
 DEFAULT_REPAIR_STATUS = REPAIR_STATUSES[0][0]
-
-
-CUSTOMER_CODE_ALPHABET = 'abcdefghijklmnopqrstuvwxyz'
-CUSTOMER_CODE_LENGTH = 4
-MAX_CUSTOMER_CODES = len(CUSTOMER_CODE_ALPHABET) ** CUSTOMER_CODE_LENGTH
 
 
 def _extract_openai_responses_text(data: dict) -> str:
@@ -97,49 +94,6 @@ def _extract_openai_responses_text(data: dict) -> str:
     _push(data.get('output_text'))
 
     return '\n'.join(fragments).strip()
-
-
-def _customer_code_to_int(code: str) -> int:
-    normalized = (code or '').strip().lower()
-    if len(normalized) != CUSTOMER_CODE_LENGTH:
-        raise ValueError('Codice cliente non valido.')
-
-    value = 0
-    base = len(CUSTOMER_CODE_ALPHABET)
-    for char in normalized:
-        if char not in CUSTOMER_CODE_ALPHABET:
-            raise ValueError('Codice cliente non valido.')
-        value = value * base + (ord(char) - ord('a'))
-    return value
-
-
-def _int_to_customer_code(value: int) -> str:
-    if not 0 <= value < MAX_CUSTOMER_CODES:
-        raise ValueError('Valore codice cliente fuori intervallo.')
-
-    base = len(CUSTOMER_CODE_ALPHABET)
-    chars = ['a'] * CUSTOMER_CODE_LENGTH
-    for index in range(CUSTOMER_CODE_LENGTH - 1, -1, -1):
-        chars[index] = chr(ord('a') + (value % base))
-        value //= base
-    return ''.join(chars)
-
-
-def _generate_next_customer_code(db) -> str:
-    row = db.execute(
-        'SELECT code FROM customers '
-        "WHERE code IS NOT NULL AND code != '' ORDER BY code DESC LIMIT 1"
-    ).fetchone()
-    if row is None or not row['code']:
-        return _int_to_customer_code(0)
-
-    current_value = _customer_code_to_int(row['code'])
-    next_value = current_value + 1
-    if next_value >= MAX_CUSTOMER_CODES:
-        raise ValueError('Limite massimo per i codici cliente raggiunto.')
-    return _int_to_customer_code(next_value)
-
-
 def _build_ai_prompts(
     system_prompt: Optional[str],
     subject: str,
@@ -250,6 +204,12 @@ def create_app() -> Flask:
         AI_SUGGESTION_OPENAI_MODEL='gpt-3.5-turbo',
         AI_SUGGESTION_DEEPSEEK_MODEL='deepseek-chat',
         AI_SUGGESTION_DEEPSEEK_ENDPOINT='https://api.deepseek.com/v1/chat/completions',
+        GOOGLE_CALENDAR_CREDENTIALS_FILE=str(
+            Path(app.instance_path) / 'google_calendar_credentials.json'
+        ),
+        GOOGLE_CALENDAR_TOKEN_FILE=str(Path(app.instance_path) / 'google_calendar_token.json'),
+        GOOGLE_CALENDAR_SCOPES='https://www.googleapis.com/auth/calendar.readonly',
+        GOOGLE_CALENDAR_ID='primary',
     )
 
     # Consente di sovrascrivere i valori tramite instance/config.py
@@ -275,6 +235,14 @@ def create_app() -> Flask:
         app.config['AI_SUGGESTION_DEEPSEEK_MODEL'] = os.environ['AI_SUGGESTION_DEEPSEEK_MODEL']
     if 'AI_SUGGESTION_DEEPSEEK_ENDPOINT' in os.environ:
         app.config['AI_SUGGESTION_DEEPSEEK_ENDPOINT'] = os.environ['AI_SUGGESTION_DEEPSEEK_ENDPOINT']
+    if 'GOOGLE_CALENDAR_CREDENTIALS_FILE' in os.environ:
+        app.config['GOOGLE_CALENDAR_CREDENTIALS_FILE'] = os.environ['GOOGLE_CALENDAR_CREDENTIALS_FILE']
+    if 'GOOGLE_CALENDAR_TOKEN_FILE' in os.environ:
+        app.config['GOOGLE_CALENDAR_TOKEN_FILE'] = os.environ['GOOGLE_CALENDAR_TOKEN_FILE']
+    if 'GOOGLE_CALENDAR_SCOPES' in os.environ:
+        app.config['GOOGLE_CALENDAR_SCOPES'] = os.environ['GOOGLE_CALENDAR_SCOPES']
+    if 'GOOGLE_CALENDAR_ID' in os.environ:
+        app.config['GOOGLE_CALENDAR_ID'] = os.environ['GOOGLE_CALENDAR_ID']
 
     # Garantisce che le directory per i file di istanza e gli upload esistano.
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
@@ -460,7 +428,7 @@ def create_app() -> Flask:
             else:
                 db = get_db()
                 try:
-                    code = _generate_next_customer_code(db)
+                    code = generate_next_customer_code(db)
                 except ValueError:
                     flash('Impossibile generare un nuovo codice cliente: limite massimo raggiunto.', 'error')
                 else:
