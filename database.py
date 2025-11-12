@@ -125,4 +125,25 @@ def init_db():
         'ON ticket_attachments(ticket_id)'
     )
 
+    # Tabella per la gestione del magazzino.
+    db.execute(
+        'CREATE TABLE IF NOT EXISTS inventory_items ('
+        'id INTEGER PRIMARY KEY AUTOINCREMENT, '
+        'code TEXT NOT NULL UNIQUE, '
+        'name TEXT NOT NULL, '
+        'description TEXT, '
+        'quantity INTEGER NOT NULL DEFAULT 0, '
+        'minimum_quantity INTEGER NOT NULL DEFAULT 0, '
+        'location TEXT, '
+        'category TEXT, '
+        'notes TEXT, '
+        'created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP, '
+        'updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP'
+        ')'
+    )
+    db.execute(
+        'CREATE INDEX IF NOT EXISTS idx_inventory_items_name '
+        'ON inventory_items(name)'
+    )
+
     db.commit()
