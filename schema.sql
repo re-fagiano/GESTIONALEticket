@@ -72,3 +72,22 @@ CREATE TABLE IF NOT EXISTS ticket_attachments (
 
 CREATE INDEX IF NOT EXISTS idx_ticket_attachments_ticket_id
     ON ticket_attachments(ticket_id);
+
+-- Gestione del magazzino. Ogni articolo ha un codice univoco, un nome,
+-- una descrizione facoltativa e informazioni di inventario.
+CREATE TABLE IF NOT EXISTS inventory_items (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    code TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    description TEXT,
+    quantity INTEGER NOT NULL DEFAULT 0,
+    minimum_quantity INTEGER NOT NULL DEFAULT 0,
+    location TEXT,
+    category TEXT,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_inventory_items_name
+    ON inventory_items(name);

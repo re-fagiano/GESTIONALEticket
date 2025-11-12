@@ -1,18 +1,28 @@
-"""
-Applicazione Flask per il gestionale a ticket.
+"""Applicazione Flask per il gestionale a ticket.
 
 Questo modulo definisce le varie rotte dell'applicazione, gestisce la
-connessione al database tramite le funzioni di `database.py` e fornisce
-funzionalità per la gestione di clienti, ticket e riparazioni.
+connessione al database tramite le funzioni di ``database.py`` e fornisce
+funzionalità per la gestione di clienti, ticket, riparazioni e magazzino.
 """
 
 import os
+import sqlite3
 import uuid
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
 
 import requests
-from flask import Flask, render_template, request, redirect, url_for, flash, send_file, jsonify
+from flask import (
+    Flask,
+    abort,
+    flash,
+    jsonify,
+    redirect,
+    render_template,
+    request,
+    send_file,
+    url_for,
+)
 
 from database import get_db, init_db, close_db
 from flask_login import current_user, login_required
@@ -94,6 +104,15 @@ def _extract_openai_responses_text(data: dict) -> str:
     _push(data.get('output_text'))
 
     return '\n'.join(fragments).strip()
+
+
+def _coerce_int(value: Optional[str], default: int = 0) -> int:
+    """Converte una stringa in intero restituendo ``default`` in caso di errore."""
+
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 def _build_ai_prompts(
     system_prompt: Optional[str],
     subject: str,
@@ -353,6 +372,180 @@ def create_app() -> Flask:
         ).fetchone()['count']
         return render_template('index.html', ticket_count=ticket_count,
                                customer_count=customer_count, repair_count=repair_count)
+
+    @app.route('/inventory', methods=['GET', 'POST'])
+    @login_required
+    def inventory():
+        db = get_db()
+
+        # Gestione delle modifiche inviate tramite form.
+        if request.method == 'POST':
+            if current_user.role != 'admin':
+                abort(403)
+
+            action = (request.form.get('action') or '').strip().lower()
+            search_after = (request.form.get('q') or '').strip()
+            redirect_kwargs = {'q': search_after} if search_after else {}
+
+            if action == 'create':
+                code = (request.form.get('code') or '').strip()
+                name = (request.form.get('name') or '').strip()
+                description = (request.form.get('description') or '').strip() or None
+                quantity = max(0, _coerce_int(request.form.get('quantity'), 0))
+                minimum_quantity = max(0, _coerce_int(request.form.get('minimum_quantity'), 0))
+                location = (request.form.get('location') or '').strip() or None
+                category = (request.form.get('category') or '').strip() or None
+                notes = (request.form.get('notes') or '').strip() or None
+
+                if not code:
+                    flash('Inserisci un codice per l\'articolo di magazzino.', 'error')
+                elif not name:
+                    flash('Inserisci un nome per l\'articolo di magazzino.', 'error')
+                else:
+                    try:
+                        db.execute(
+                            'INSERT INTO inventory_items ('
+                            'code, name, description, quantity, minimum_quantity, '
+                            'location, category, notes'
+                            ') VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                            (code, name, description, quantity, minimum_quantity, location, category, notes),
+                        )
+                        db.commit()
+                        flash('Articolo di magazzino creato correttamente.', 'success')
+                    except sqlite3.IntegrityError:
+                        flash('Esiste già un articolo con questo codice.', 'error')
+
+                return redirect(url_for('inventory', **redirect_kwargs))
+
+            if action == 'update':
+                item_id = request.form.get('item_id')
+                try:
+                    item_id_int = int(item_id)
+                except (TypeError, ValueError):
+                    flash('Articolo di magazzino non valido.', 'error')
+                    if item_id:
+                        redirect_kwargs['edit'] = item_id
+                    return redirect(url_for('inventory', **redirect_kwargs))
+
+                code = (request.form.get('code') or '').strip()
+                name = (request.form.get('name') or '').strip()
+                description = (request.form.get('description') or '').strip() or None
+                quantity = max(0, _coerce_int(request.form.get('quantity'), 0))
+                minimum_quantity = max(0, _coerce_int(request.form.get('minimum_quantity'), 0))
+                location = (request.form.get('location') or '').strip() or None
+                category = (request.form.get('category') or '').strip() or None
+                notes = (request.form.get('notes') or '').strip() or None
+
+                if not code:
+                    flash('Il codice dell\'articolo non può essere vuoto.', 'error')
+                    redirect_kwargs['edit'] = item_id_int
+                    return redirect(url_for('inventory', **redirect_kwargs))
+                if not name:
+                    flash('Il nome dell\'articolo non può essere vuoto.', 'error')
+                    redirect_kwargs['edit'] = item_id_int
+                    return redirect(url_for('inventory', **redirect_kwargs))
+
+                existing = db.execute(
+                    'SELECT id FROM inventory_items WHERE id = ?',
+                    (item_id_int,),
+                ).fetchone()
+                if existing is None:
+                    flash('Articolo di magazzino non trovato.', 'error')
+                    return redirect(url_for('inventory', **redirect_kwargs))
+
+                try:
+                    db.execute(
+                        'UPDATE inventory_items SET '
+                        'code = ?, name = ?, description = ?, quantity = ?, '
+                        'minimum_quantity = ?, location = ?, category = ?, notes = ?, '
+                        'updated_at = CURRENT_TIMESTAMP '
+                        'WHERE id = ?',
+                        (
+                            code,
+                            name,
+                            description,
+                            quantity,
+                            minimum_quantity,
+                            location,
+                            category,
+                            notes,
+                            item_id_int,
+                        ),
+                    )
+                    db.commit()
+                    flash('Articolo di magazzino aggiornato correttamente.', 'success')
+                except sqlite3.IntegrityError:
+                    flash('Esiste già un articolo con questo codice.', 'error')
+                    redirect_kwargs['edit'] = item_id_int
+
+                return redirect(url_for('inventory', **redirect_kwargs))
+
+            if action == 'delete':
+                item_id = request.form.get('item_id')
+                try:
+                    item_id_int = int(item_id)
+                except (TypeError, ValueError):
+                    flash('Articolo di magazzino non valido.', 'error')
+                    return redirect(url_for('inventory', **redirect_kwargs))
+
+                cursor = db.execute(
+                    'DELETE FROM inventory_items WHERE id = ?',
+                    (item_id_int,),
+                )
+                db.commit()
+                if cursor.rowcount:
+                    flash('Articolo di magazzino eliminato.', 'success')
+                else:
+                    flash('Articolo di magazzino non trovato.', 'error')
+
+                return redirect(url_for('inventory', **redirect_kwargs))
+
+            flash('Azione di magazzino non riconosciuta.', 'error')
+            return redirect(url_for('inventory', **redirect_kwargs))
+
+        search_query = (request.args.get('q') or '').strip()
+        edit_id = request.args.get('edit', type=int)
+        edit_item = None
+        if edit_id:
+            edit_item = db.execute(
+                'SELECT * FROM inventory_items WHERE id = ?',
+                (edit_id,),
+            ).fetchone()
+            if edit_item is None:
+                flash('Impossibile trovare l\'articolo richiesto per la modifica.', 'error')
+
+        params: List[str] = []
+        query = (
+            'SELECT id, code, name, description, quantity, minimum_quantity, '
+            'location, category, notes, created_at, updated_at '
+            'FROM inventory_items'
+        )
+        if search_query:
+            like = f'%{search_query}%'
+            query += (
+                ' WHERE code LIKE ? OR name LIKE ? OR '
+                'IFNULL(description, "") LIKE ? OR IFNULL(location, "") LIKE ? OR '
+                'IFNULL(category, "") LIKE ? OR IFNULL(notes, "") LIKE ?'
+            )
+            params.extend([like, like, like, like, like, like])
+        query += ' ORDER BY LOWER(name), LOWER(code)'
+
+        items = db.execute(query, params).fetchall()
+        total_quantity = sum((row['quantity'] or 0) for row in items)
+        low_stock_ids = {
+            row['id']
+            for row in items
+            if row['minimum_quantity'] and row['quantity'] <= row['minimum_quantity']
+        }
+
+        return render_template(
+            'inventory.html',
+            items=items,
+            search_query=search_query,
+            edit_item=edit_item,
+            low_stock_ids=low_stock_ids,
+            total_quantity=total_quantity,
+        )
 
     @app.route('/admin/users')
     @admin_required
