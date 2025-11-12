@@ -8,8 +8,9 @@ funzionalità per la gestione di clienti, ticket, riparazioni e magazzino.
 import os
 import sqlite3
 import uuid
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Iterable, List, Optional, Tuple
+from typing import Iterable, List, Optional, Sequence, Tuple
 
 import requests
 from flask import (
@@ -28,10 +29,13 @@ from database import get_db, init_db, close_db
 from flask_login import current_user, login_required
 
 from auth import admin_required, bp as auth_bp, login_manager
+from auth.google_calendar import GoogleCalendarOAuth
 from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
 from services.customer_codes import generate_next_customer_code
+from services.customer_sync import CustomerSyncService
+from services.google_calendar_client import GoogleCalendarClient
 
 
 TICKET_STATUSES = [
@@ -113,6 +117,49 @@ def _coerce_int(value: Optional[str], default: int = 0) -> int:
         return int(value)
     except (TypeError, ValueError):
         return default
+
+
+def _to_rfc3339(dt: datetime) -> str:
+    """Converte un ``datetime`` in formato RFC3339 (UTC)."""
+
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    else:
+        dt = dt.astimezone(timezone.utc)
+    return dt.isoformat().replace('+00:00', 'Z')
+
+
+def _parse_calendar_scopes(raw: Optional[Sequence[str] | str]) -> List[str]:
+    """Normalizza gli scope configurati per Google Calendar."""
+
+    if raw is None:
+        return ['https://www.googleapis.com/auth/calendar.readonly']
+    if isinstance(raw, (list, tuple, set)):
+        scopes = [str(scope).strip() for scope in raw if str(scope).strip()]
+    else:
+        scopes = [scope.strip() for scope in str(raw).split(',') if scope.strip()]
+    return scopes or ['https://www.googleapis.com/auth/calendar.readonly']
+
+
+def _resolve_calendar_settings(app: Flask) -> dict:
+    """Restituisce percorsi e impostazioni per l'integrazione Google Calendar."""
+
+    credentials_path = Path(
+        app.config.get('GOOGLE_CALENDAR_CREDENTIALS_FILE')
+        or (Path(app.instance_path) / 'google_calendar_credentials.json')
+    )
+    token_path = Path(
+        app.config.get('GOOGLE_CALENDAR_TOKEN_FILE')
+        or (Path(app.instance_path) / 'google_calendar_token.json')
+    )
+    scopes = _parse_calendar_scopes(app.config.get('GOOGLE_CALENDAR_SCOPES'))
+    calendar_id = app.config.get('GOOGLE_CALENDAR_ID') or 'primary'
+    return {
+        'credentials_path': credentials_path,
+        'token_path': token_path,
+        'scopes': scopes,
+        'calendar_id': calendar_id,
+    }
 def _build_ai_prompts(
     system_prompt: Optional[str],
     subject: str,
@@ -556,6 +603,116 @@ def create_app() -> Flask:
             'SELECT id, username, role, created_at FROM users ORDER BY username'
         ).fetchall()
         return render_template('admin_users.html', users=users)
+
+    @app.route('/admin/calendar-sync', methods=['GET', 'POST'])
+    @admin_required
+    def calendar_sync():
+        settings = _resolve_calendar_settings(app)
+        calendar_id = settings['calendar_id']
+        oauth = GoogleCalendarOAuth(
+            settings['credentials_path'],
+            settings['token_path'],
+            settings['scopes'],
+            run_console=False,
+            allow_interactive=False,
+        )
+
+        def _build_status(creds) -> dict:
+            return {
+                'credentials_path': settings['credentials_path'],
+                'credentials_exists': settings['credentials_path'].exists(),
+                'token_path': settings['token_path'],
+                'token_exists': settings['token_path'].exists(),
+                'token_valid': bool(creds and creds.valid),
+                'token_expiry': getattr(creds, 'expiry', None),
+                'token_has_refresh': bool(creds and creds.refresh_token),
+                'scopes': settings['scopes'],
+            }
+
+        saved_credentials = oauth.load_saved_credentials()
+        status = _build_status(saved_credentials)
+        status['calendar_id'] = calendar_id
+
+        form_values = {
+            'calendar_id': calendar_id,
+            'past_days': 30,
+            'future_days': 7,
+            'max_results': 250,
+        }
+        stats = None
+        sync_details = None
+
+        if request.method == 'POST':
+            calendar_id = (request.form.get('calendar_id') or '').strip() or calendar_id
+            past_days = max(_coerce_int(request.form.get('past_days'), 30), 0)
+            future_days = max(_coerce_int(request.form.get('future_days'), 7), 0)
+            max_results = max(_coerce_int(request.form.get('max_results'), 250), 1)
+            form_values.update(
+                {
+                    'calendar_id': calendar_id,
+                    'past_days': past_days,
+                    'future_days': future_days,
+                    'max_results': max_results,
+                }
+            )
+
+            if not status['credentials_exists']:
+                flash(
+                    'Carica prima il file di credenziali OAuth in "instance/google_calendar_credentials.json".',
+                    'error',
+                )
+            else:
+                client = GoogleCalendarClient(oauth, calendar_id=calendar_id)
+                now = datetime.now(timezone.utc)
+                time_min = _to_rfc3339(now - timedelta(days=past_days))
+                time_max = _to_rfc3339(now + timedelta(days=future_days))
+
+                try:
+                    events = client.fetch_events(
+                        time_min=time_min,
+                        time_max=time_max,
+                        max_results=max_results,
+                    )
+                    candidates = client.extract_customers(events)
+                    sync_service = CustomerSyncService(get_db(), logger=app.logger)
+                    stats = sync_service.sync_candidates(candidates)
+                    sync_details = {
+                        'calendar_id': calendar_id,
+                        'events_count': len(events),
+                        'candidates_count': len(candidates),
+                        'past_days': past_days,
+                        'future_days': future_days,
+                        'max_results': max_results,
+                    }
+                    flash(
+                        'Sincronizzazione completata: '
+                        f"{stats['created']} creati, {stats['updated']} aggiornati, {stats['skipped']} invariati.",
+                        'success',
+                    )
+                except RuntimeError as exc:
+                    flash(str(exc), 'error')
+                except Exception as exc:  # pragma: no cover - error path dipende da Google
+                    app.logger.exception(
+                        'Errore durante la sincronizzazione con Google Calendar.',
+                        exc_info=exc,
+                    )
+                    flash(
+                        'Si è verificato un errore durante la sincronizzazione dal calendario. '
+                        'Controlla i log per maggiori dettagli.',
+                        'error',
+                    )
+
+            saved_credentials = oauth.load_saved_credentials()
+            status = _build_status(saved_credentials)
+            status['calendar_id'] = calendar_id
+
+        return render_template(
+            'calendar_sync.html',
+            status=status,
+            form_values=form_values,
+            stats=stats,
+            sync_details=sync_details,
+        )
 
     @app.route('/admin/users/<int:user_id>/promote', methods=['POST'])
     @admin_required
