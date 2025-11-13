@@ -47,162 +47,9 @@
             font-weight: 600;
             letter-spacing: 0.02em;
             text-transform: uppercase;
-        }
-        .badge-open,
-        .badge-diagnosticato {
-            background: #e3f2fd;
-            color: #0d47a1;
-        }
-        .badge-in-progress,
-        .badge-preventivo-pronto {
-            background: #fff3cd;
-            color: #8a6d3b;
-        }
-        .badge-pending,
-        .badge-preventivo-accettato {
-            background: #ede7f6;
-            color: #4527a0;
-        }
-        .badge-completed,
-        .badge-intervento-completato {
-            background: #e8f5e9;
-            color: #1b5e20;
-        }
-        .badge-closed,
-        .badge-chiuso {
-            background: #eceff1;
-            color: #37474f;
-        }
-        .status-legend {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 0.5rem 1rem;
-            margin: 1rem 0;
-        }
-        .actions-column {
-            text-align: center;
-            white-space: nowrap;
-        }
-        form.inline-form {
-            display: inline;
-            margin: 0;
-        }
-        form.inline-form button {
-            margin-top: 0;
-            display: inline-block;
-        }
-        .btn-danger {
-            background: #d32f2f;
-            border-radius: 4px;
-        }
-        .btn-danger:hover {
-            background: #9a0007;
-        }
-        .ticket-attachments {
-            margin-top: 2rem;
-        }
-        .attachments-list {
-            list-style: none;
-            padding: 0;
-            margin: 1rem 0;
-        }
-        .attachments-list li {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: space-between;
-            align-items: center;
-            gap: 0.5rem 1rem;
-            padding: 0.75rem;
-            background: #fff;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        .attachment-info {
-            display: flex;
-            flex-direction: column;
-            gap: 0.35rem;
-        }
-        .attachment-meta {
-            font-size: 0.85rem;
-            color: #555;
-        }
-        .attachment-download {
-            color: #2d6cdf;
-            text-decoration: none;
-            font-weight: 600;
-        }
-        .attachment-download:hover {
-            text-decoration: underline;
-        }
-        .attachment-upload-form {
-            margin-top: 1rem;
-            padding: 1rem;
-            background: #fff;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-        }
-        .attachment-upload-form label {
-            margin-top: 0;
-        }
-        .attachment-upload-form input[type="file"] {
-            padding: 0.25rem 0;
-        }
-        .ai-helper {
-            margin-top: 1rem;
-            padding: 0.75rem;
-            background: #fff;
-            border: 1px solid #d9e1ff;
-            border-radius: 6px;
-            position: relative;
-        }
-
-        .ai-helper label {
-            margin-top: 0;
-        }
-
-        .ai-suggest-button {
-            margin-top: 0.75rem;
-            padding: 0.5rem 1rem;
-            background: #344fbd;
-            color: #fff;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .ai-suggest-button[disabled] {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .ai-suggestion {
-            margin-top: 0.75rem;
-            min-height: 1.25rem;
-            font-size: 0.95rem;
-            color: #1b2559;
-        }
-
-        .ai-suggestion.error {
-            color: #c0392b;
-        }
-
-        .ai-suggestion .spinner {
-            display: inline-block;
-            width: 1rem;
-            height: 1rem;
-            border: 2px solid rgba(52, 79, 189, 0.25);
-            border-top-color: #344fbd;
-            border-radius: 50%;
-            animation: ai-spin 0.8s linear infinite;
-        }
-
-        @keyframes ai-spin {
-            to {
-                transform: rotate(360deg);
-            }
+            margin-left: 0.25rem;
+            background: rgba(255, 255, 255, 0.2);
+            color: #ffffff;
         }
     </style>
 </head>
@@ -212,18 +59,34 @@
     {% set is_authenticated = current_user.is_authenticated %}
     {% set is_admin = is_authenticated and current_user.role == 'admin' %}
     <nav>
+        <!-- Main navigation -->
         <a class="nav-link-dashboard" href="{{ url_for('index') }}">Dashboard</a>
         <a class="nav-link-customers" href="{{ url_for('customers') }}">Clienti</a>
         <a class="nav-link-tickets" href="{{ url_for('tickets') }}">Ticket</a>
         <a class="nav-link-repairs" href="{{ url_for('repairs') }}">Storico riparazioni</a>
-        <a class="nav-link-magazzino" href="{{ url_for('magazzino') }}">Magazzino</a>
-        {% if current_user.is_authenticated and current_user.role == 'admin' %}
-            <a class="nav-link-calendar" href="{{ url_for('calendar_sync') }}">Google Calendar</a>
+        <!-- Service links always visible -->
+        <a class="nav-link-magazzino" href="{{ url_for('magazzino') }}">
+            Magazzino
+            {% if not is_authenticated %}
+                <span class="badge">Richiede login</span>
+            {% elif not is_admin %}
+                <span class="badge">Solo admin</span>
+            {% endif %}
+        </a>
+        <a class="nav-link-calendar" href="{{ url_for('calendar_sync') }}">
+            Google Calendar
+            {% if not is_authenticated %}
+                <span class="badge">Richiede login</span>
+            {% elif not is_admin %}
+                <span class="badge">Solo admin</span>
+            {% endif %}
+        </a>
+        {% if is_authenticated and is_admin %}
             <a class="nav-link-admin-users" href="{{ url_for('admin_users') }}">Utenti</a>
         {% endif %}
     </nav>
     <div class="auth-links">
-        {% if current_user.is_authenticated %}
+        {% if is_authenticated %}
             <span>{{ current_user.username }}{% if current_user.role %} ({{ current_user.role }}){% endif %}</span>
             <a href="{{ url_for('auth.logout') }}">Logout</a>
         {% else %}
