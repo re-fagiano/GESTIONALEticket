@@ -10,7 +10,7 @@ import sqlite3
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 import requests
 from flask import (
@@ -249,8 +249,17 @@ def _fetch_latest_ticket_history_entries(
     return latest
 
 
-def create_app() -> Flask:
-    """Factory per creare e configurare l'istanza di Flask."""
+def create_app(test_config: Optional[Mapping[str, Any]] = None) -> Flask:
+    """Factory per creare e configurare l'istanza di Flask.
+
+    Parameters
+    ----------
+    test_config:
+        Dizionario opzionale usato per sovrascrivere la configurazione di
+        default. È particolarmente utile nei test automatici per impostare un
+        database temporaneo o cartelle di upload dedicate prima che venga
+        invocata l'inizializzazione del database.
+    """
     app = Flask(__name__, instance_relative_config=True)
     # Configurazione di default caricata direttamente nell'applicazione
     app.config.from_mapping(
@@ -309,6 +318,9 @@ def create_app() -> Flask:
         app.config['GOOGLE_CALENDAR_SCOPES'] = os.environ['GOOGLE_CALENDAR_SCOPES']
     if 'GOOGLE_CALENDAR_ID' in os.environ:
         app.config['GOOGLE_CALENDAR_ID'] = os.environ['GOOGLE_CALENDAR_ID']
+
+    if test_config:
+        app.config.update(test_config)
 
     # Garantisce che le directory per i file di istanza e gli upload esistano.
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
@@ -604,9 +616,10 @@ def create_app() -> Flask:
         ).fetchall()
         return render_template('admin_users.html', users=users)
 
-    @app.route('/admin/calendar-sync', methods=['GET', 'POST'])
-    @admin_required
+    @app.route('/calendar/google', methods=['GET', 'POST'])
+    @login_required
     def calendar_sync():
+        can_manage = current_user.role == 'admin'
         settings = _resolve_calendar_settings(app)
         calendar_id = settings['calendar_id']
         oauth = GoogleCalendarOAuth(
@@ -643,6 +656,8 @@ def create_app() -> Flask:
         sync_details = None
 
         if request.method == 'POST':
+            if not can_manage:
+                abort(403)
             calendar_id = (request.form.get('calendar_id') or '').strip() or calendar_id
             past_days = max(_coerce_int(request.form.get('past_days'), 30), 0)
             future_days = max(_coerce_int(request.form.get('future_days'), 7), 0)
@@ -712,6 +727,7 @@ def create_app() -> Flask:
             form_values=form_values,
             stats=stats,
             sync_details=sync_details,
+            can_manage_calendar=can_manage,
         )
 
     @app.route('/admin/users/<int:user_id>/promote', methods=['POST'])

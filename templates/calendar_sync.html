@@ -1,12 +1,11 @@
 {% extends "base.html" %}
 {% block title %}Sincronizzazione Google Calendar{% endblock %}
 {% block content %}
-<h2>Sincronizzazione clienti da Google Calendar</h2>
+<h2>Integrazione Google Calendar</h2>
 <p>
-    Usa questa pagina per avviare manualmente la lettura degli eventi del calendario
-    configurato e aggiornare l'anagrafica clienti del gestionale. Assicurati di avere
-    caricato il file di credenziali OAuth e di aver completato almeno una volta il
-    flusso di autorizzazione tramite CLI.
+    Da questa sezione puoi monitorare lo stato della connessione con Google Calendar
+    e, se hai i permessi di amministratore, avviare manualmente la sincronizzazione
+    dei clienti partendo dagli eventi salvati nel calendario configurato.
 </p>
 
 <section class="info">
@@ -36,6 +35,7 @@
     {% endif %}
 </section>
 
+{% if can_manage_calendar %}
 <form method="post" class="calendar-sync-form">
     <label for="calendar_id">ID calendario Google</label>
     <input type="text" id="calendar_id" name="calendar_id" value="{{ form_values.calendar_id }}" placeholder="primary" />
@@ -59,6 +59,15 @@
         Avvia sincronizzazione
     </button>
 </form>
+{% else %}
+<section class="info" style="margin-top: 1.5rem;">
+    <strong>Accesso limitato</strong>
+    <p>
+        Solo gli amministratori possono lanciare la sincronizzazione manuale con Google Calendar.
+        Se hai bisogno di questa funzionalità richiedi l'abilitazione a un amministratore.
+    </p>
+</section>
+{% endif %}
 
 {% if stats %}
     <section class="info" style="margin-top: 1.5rem;">
