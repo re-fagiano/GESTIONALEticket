@@ -13,4 +13,16 @@
     <a class="button" href="{{ url_for('repairs') }}">Storico riparazioni</a>
     <a class="button" href="{{ url_for('magazzino') }}">Magazzino</a>
 </p>
+
+{% if current_user.is_authenticated and current_user.role == 'admin' %}
+<section class="info" style="margin-top: 1.5rem;">
+    <h3 style="margin-top: 0;">Sincronizzazione Google Calendar</h3>
+    <p style="margin-bottom: 0.75rem;">
+        Accedi alla sezione dedicata per verificare lo stato delle credenziali OAuth,
+        avviare manualmente l'importazione degli eventi e aggiornare l'anagrafica
+        clienti.
+    </p>
+    <a class="button" href="{{ url_for('calendar_sync') }}">Apri sincronizzazione calendario</a>
+</section>
+{% endif %}
 {% endblock %}
