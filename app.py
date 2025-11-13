@@ -10,7 +10,7 @@ import sqlite3
 import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Iterable, List, Mapping, Optional, Sequence, Tuple
 
 import requests
 from flask import (
@@ -249,8 +249,17 @@ def _fetch_latest_ticket_history_entries(
     return latest
 
 
-def create_app() -> Flask:
-    """Factory per creare e configurare l'istanza di Flask."""
+def create_app(test_config: Optional[Mapping[str, Any]] = None) -> Flask:
+    """Factory per creare e configurare l'istanza di Flask.
+
+    Parameters
+    ----------
+    test_config:
+        Dizionario opzionale usato per sovrascrivere la configurazione di
+        default. È particolarmente utile nei test automatici per impostare un
+        database temporaneo o cartelle di upload dedicate prima che venga
+        invocata l'inizializzazione del database.
+    """
     app = Flask(__name__, instance_relative_config=True)
     # Configurazione di default caricata direttamente nell'applicazione
     app.config.from_mapping(
@@ -309,6 +318,9 @@ def create_app() -> Flask:
         app.config['GOOGLE_CALENDAR_SCOPES'] = os.environ['GOOGLE_CALENDAR_SCOPES']
     if 'GOOGLE_CALENDAR_ID' in os.environ:
         app.config['GOOGLE_CALENDAR_ID'] = os.environ['GOOGLE_CALENDAR_ID']
+
+    if test_config:
+        app.config.update(test_config)
 
     # Garantisce che le directory per i file di istanza e gli upload esistano.
     Path(app.instance_path).mkdir(parents=True, exist_ok=True)
