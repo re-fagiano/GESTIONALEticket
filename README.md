@@ -129,6 +129,16 @@ python -m jobs.sync_calendar_customers --past-days 60 --future-days 7 --max-resu
 
 Il comando apre il flusso OAuth in modalità console (fornendo un URL da visitare e un codice da incollare). Per usare il browser locale aggiungi `--local-server`. Il token viene riutilizzato automaticamente nelle esecuzioni successive.
 
+### Sincronizzazione dall'interfaccia web
+
+Dopo aver completato almeno una volta l'autorizzazione OAuth (in modo che venga creato il token nella cartella `instance/`), gli amministratori possono avviare la sincronizzazione direttamente dall'applicazione. Accedi con un utente amministratore, apri il menu **Google Calendar** nella barra in alto (o usa il collegamento rapido mostrato in Dashboard) e compila il modulo:
+
+1. Scegli l'ID del calendario da interrogare (es. `primary` o l'indirizzo email del calendario condiviso).
+2. Imposta l'intervallo temporale da analizzare e il numero massimo di eventi.
+3. Premi **Avvia sincronizzazione** per scaricare gli eventi e aggiornare l'anagrafica clienti.
+
+La pagina mostra anche lo stato della configurazione (presenza delle credenziali e del token, scadenza, scope attivi) e disabilita il pulsante se manca qualcuno di questi requisiti.
+
 ### Payload per servizi personalizzati
 
 Se utilizzi un endpoint personalizzato, il servizio riceve un payload come questo:

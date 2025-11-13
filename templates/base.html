@@ -206,6 +206,7 @@
         <a href="{{ url_for('repairs') }}">Storico riparazioni</a>
         <a href="{{ url_for('inventory') }}">Magazzino</a>
         {% if current_user.is_authenticated and current_user.role == 'admin' %}
+            <a href="{{ url_for('calendar_sync') }}">Google Calendar</a>
             <a href="{{ url_for('admin_users') }}">Utenti</a>
         {% endif %}
     </nav>
