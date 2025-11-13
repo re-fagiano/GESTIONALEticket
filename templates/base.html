@@ -58,13 +58,14 @@
     <h1>Gestionale Ticket</h1>
     {% set is_authenticated = current_user.is_authenticated %}
     {% set is_admin = is_authenticated and current_user.role == 'admin' %}
-    <nav>
-        <!-- Main navigation -->
+    <nav class="main-nav">
         <a class="nav-link-dashboard" href="{{ url_for('index') }}">Dashboard</a>
         <a class="nav-link-customers" href="{{ url_for('customers') }}">Clienti</a>
         <a class="nav-link-tickets" href="{{ url_for('tickets') }}">Ticket</a>
         <a class="nav-link-repairs" href="{{ url_for('repairs') }}">Storico riparazioni</a>
-        <!-- Service links always visible -->
+    </nav>
+
+    <nav class="services-nav">
         <a class="nav-link-magazzino" href="{{ url_for('magazzino') }}">
             Magazzino
             {% if not is_authenticated %}
