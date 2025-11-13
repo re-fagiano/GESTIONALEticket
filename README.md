@@ -131,7 +131,7 @@ Il comando apre il flusso OAuth in modalità console (fornendo un URL da visitar
 
 ### Sincronizzazione dall'interfaccia web
 
-Dopo aver completato almeno una volta l'autorizzazione OAuth (in modo che venga creato il token nella cartella `instance/`), gli amministratori possono avviare la sincronizzazione direttamente dall'applicazione. Accedi con un utente amministratore, apri il menu **Google Calendar** nella barra in alto (o usa il collegamento rapido mostrato in Dashboard) e compila il modulo:
+Dopo aver completato almeno una volta l'autorizzazione OAuth (in modo che venga creato il token nella cartella `instance/`), gli amministratori possono avviare la sincronizzazione direttamente dall'applicazione. Accedi con un utente amministratore, apri il menu **Google Calendar** nella barra in alto e compila il modulo:
 
 1. Scegli l'ID del calendario da interrogare (es. `primary` o l'indirizzo email del calendario condiviso).
 2. Imposta l'intervallo temporale da analizzare e il numero massimo di eventi.
