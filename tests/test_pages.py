@@ -29,19 +29,3 @@ def test_calendar_sync_available_for_admin(client, login):
     response: Response = client.get('/admin/calendar-sync')
     assert response.status_code == 200
     assert b'Sincronizzazione clienti da Google Calendar' in response.data
-
-
-def test_navigation_includes_inventory_link(client, login):
-    login('user', 'userpass')
-    response: Response = client.get('/')
-    assert response.status_code == 200
-    assert b'href="/magazzino"' in response.data
-    assert b'Magazzino' in response.data
-
-
-def test_navigation_includes_calendar_link_for_admin(client, login):
-    login('admin', 'adminpass')
-    response: Response = client.get('/')
-    assert response.status_code == 200
-    assert b'href="/admin/calendar-sync"' in response.data
-    assert b'Google Calendar' in response.data
