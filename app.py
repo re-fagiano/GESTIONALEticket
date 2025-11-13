@@ -340,6 +340,20 @@ def create_app(test_config: Optional[Mapping[str, Any]] = None) -> Flask:
 
     app.register_blueprint(auth_bp)
 
+    @app.context_processor
+    def inject_main_navigation():
+        """Rende disponibile l'elenco delle voci di navigazione principali."""
+
+        items = [
+            {"endpoint": "index", "label": "Dashboard"},
+            {"endpoint": "customers", "label": "Clienti"},
+            {"endpoint": "tickets", "label": "Ticket"},
+            {"endpoint": "repairs", "label": "Storico riparazioni"},
+            {"endpoint": "magazzino", "label": "Magazzino"},
+        ]
+
+        return {"main_navigation": items}
+
 
     def _store_ticket_attachments(
         ticket_id: int,
