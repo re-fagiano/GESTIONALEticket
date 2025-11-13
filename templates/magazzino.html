@@ -96,12 +96,12 @@
         <strong>Articoli sotto scorta:</strong> {{ low_stock_ids|length }}
     {% endif %}
 </div>
-<form class="inventory-search" method="get" action="{{ url_for('inventory') }}">
-    <label for="inventory-search">Ricerca</label>
-    <input id="inventory-search" type="text" name="q" placeholder="Cerca per codice, nome, posizione..." value="{{ search_query }}">
+<form class="inventory-search" method="get" action="{{ url_for('magazzino') }}">
+    <label for="magazzino-search">Ricerca</label>
+    <input id="magazzino-search" type="text" name="q" placeholder="Cerca per codice, nome, posizione..." value="{{ search_query }}">
     <button type="submit">Filtra</button>
     {% if search_query %}
-        <a class="button secondary" href="{{ url_for('inventory') }}">Azzera</a>
+        <a class="button secondary" href="{{ url_for('magazzino') }}">Azzera</a>
     {% endif %}
 </form>
 {% set is_admin = current_user.is_authenticated and current_user.role == 'admin' %}
@@ -109,7 +109,7 @@
 <div class="inventory-layout">
     <div class="inventory-card">
         <h3>{% if edit_item %}Modifica articolo{% else %}Nuovo articolo{% endif %}</h3>
-        <form method="post" action="{{ url_for('inventory') }}">
+        <form method="post" action="{{ url_for('magazzino') }}">
             <input type="hidden" name="action" value="{% if edit_item %}update{% else %}create{% endif %}">
             <input type="hidden" name="q" value="{{ search_query }}">
             {% if edit_item %}
@@ -142,7 +142,7 @@
             <div class="form-actions">
                 <button type="submit">{% if edit_item %}Aggiorna articolo{% else %}Aggiungi articolo{% endif %}</button>
                 {% if edit_item %}
-                    <a class="button secondary" href="{{ url_for('inventory', q=search_query or None) }}">Annulla</a>
+                    <a class="button secondary" href="{{ url_for('magazzino', q=search_query or None) }}">Annulla</a>
                 {% endif %}
             </div>
         </form>
@@ -191,8 +191,8 @@
                 {% if is_admin %}
                     <td class="actions-column">
                         <div class="inventory-actions">
-                            <a class="button" href="{{ url_for('inventory', q=search_query or None, edit=item.id) }}">Modifica</a>
-                            <form method="post" action="{{ url_for('inventory') }}" class="inline-form" onsubmit="return confirm('Eliminare definitivamente questo articolo?');">
+                            <a class="button" href="{{ url_for('magazzino', q=search_query or None, edit=item.id) }}">Modifica</a>
+                            <form method="post" action="{{ url_for('magazzino') }}" class="inline-form" onsubmit="return confirm('Eliminare definitivamente questo articolo?');">
                                 <input type="hidden" name="action" value="delete">
                                 <input type="hidden" name="item_id" value="{{ item.id }}">
                                 <input type="hidden" name="q" value="{{ search_query }}">

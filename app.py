@@ -281,6 +281,20 @@ def create_app() -> Flask:
 
     app.register_blueprint(auth_bp)
 
+    @app.context_processor
+    def inject_main_navigation():
+        """Rende disponibile l'elenco delle voci di navigazione principali."""
+
+        items = [
+            {"endpoint": "index", "label": "Dashboard"},
+            {"endpoint": "customers", "label": "Clienti"},
+            {"endpoint": "tickets", "label": "Ticket"},
+            {"endpoint": "repairs", "label": "Storico riparazioni"},
+            {"endpoint": "magazzino", "label": "Magazzino"},
+        ]
+
+        return {"main_navigation": items}
+
 
     def _store_ticket_attachments(
         ticket_id: int,
@@ -373,9 +387,10 @@ def create_app() -> Flask:
         return render_template('index.html', ticket_count=ticket_count,
                                customer_count=customer_count, repair_count=repair_count)
 
-    @app.route('/inventory', methods=['GET', 'POST'])
+    @app.route('/magazzino', methods=['GET', 'POST'])
+    @app.route('/inventory', methods=['GET', 'POST'], endpoint='inventory')
     @login_required
-    def inventory():
+    def magazzino():
         db = get_db()
 
         # Gestione delle modifiche inviate tramite form.
@@ -415,7 +430,7 @@ def create_app() -> Flask:
                     except sqlite3.IntegrityError:
                         flash('Esiste già un articolo con questo codice.', 'error')
 
-                return redirect(url_for('inventory', **redirect_kwargs))
+                return redirect(url_for('magazzino', **redirect_kwargs))
 
             if action == 'update':
                 item_id = request.form.get('item_id')
@@ -425,7 +440,7 @@ def create_app() -> Flask:
                     flash('Articolo di magazzino non valido.', 'error')
                     if item_id:
                         redirect_kwargs['edit'] = item_id
-                    return redirect(url_for('inventory', **redirect_kwargs))
+                    return redirect(url_for('magazzino', **redirect_kwargs))
 
                 code = (request.form.get('code') or '').strip()
                 name = (request.form.get('name') or '').strip()
@@ -439,11 +454,11 @@ def create_app() -> Flask:
                 if not code:
                     flash('Il codice dell\'articolo non può essere vuoto.', 'error')
                     redirect_kwargs['edit'] = item_id_int
-                    return redirect(url_for('inventory', **redirect_kwargs))
+                    return redirect(url_for('magazzino', **redirect_kwargs))
                 if not name:
                     flash('Il nome dell\'articolo non può essere vuoto.', 'error')
                     redirect_kwargs['edit'] = item_id_int
-                    return redirect(url_for('inventory', **redirect_kwargs))
+                    return redirect(url_for('magazzino', **redirect_kwargs))
 
                 existing = db.execute(
                     'SELECT id FROM inventory_items WHERE id = ?',
@@ -451,7 +466,7 @@ def create_app() -> Flask:
                 ).fetchone()
                 if existing is None:
                     flash('Articolo di magazzino non trovato.', 'error')
-                    return redirect(url_for('inventory', **redirect_kwargs))
+                    return redirect(url_for('magazzino', **redirect_kwargs))
 
                 try:
                     db.execute(
@@ -478,7 +493,7 @@ def create_app() -> Flask:
                     flash('Esiste già un articolo con questo codice.', 'error')
                     redirect_kwargs['edit'] = item_id_int
 
-                return redirect(url_for('inventory', **redirect_kwargs))
+                return redirect(url_for('magazzino', **redirect_kwargs))
 
             if action == 'delete':
                 item_id = request.form.get('item_id')
@@ -486,7 +501,7 @@ def create_app() -> Flask:
                     item_id_int = int(item_id)
                 except (TypeError, ValueError):
                     flash('Articolo di magazzino non valido.', 'error')
-                    return redirect(url_for('inventory', **redirect_kwargs))
+                    return redirect(url_for('magazzino', **redirect_kwargs))
 
                 cursor = db.execute(
                     'DELETE FROM inventory_items WHERE id = ?',
@@ -498,10 +513,10 @@ def create_app() -> Flask:
                 else:
                     flash('Articolo di magazzino non trovato.', 'error')
 
-                return redirect(url_for('inventory', **redirect_kwargs))
+                return redirect(url_for('magazzino', **redirect_kwargs))
 
             flash('Azione di magazzino non riconosciuta.', 'error')
-            return redirect(url_for('inventory', **redirect_kwargs))
+            return redirect(url_for('magazzino', **redirect_kwargs))
 
         search_query = (request.args.get('q') or '').strip()
         edit_id = request.args.get('edit', type=int)
@@ -539,7 +554,7 @@ def create_app() -> Flask:
         }
 
         return render_template(
-            'inventory.html',
+            'magazzino.html',
             items=items,
             search_query=search_query,
             edit_item=edit_item,
