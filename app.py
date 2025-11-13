@@ -350,6 +350,7 @@ def create_app(test_config: Optional[Mapping[str, Any]] = None) -> Flask:
             {"endpoint": "tickets", "label": "Ticket"},
             {"endpoint": "repairs", "label": "Storico riparazioni"},
             {"endpoint": "magazzino", "label": "Magazzino"},
+            {"endpoint": "calendar_sync", "label": "Google Calendar"},
         ]
 
         return {"main_navigation": items}
