@@ -26,12 +26,14 @@ class GoogleCalendarOAuth:
         *,
         run_console: bool = True,
         local_server_port: int = 0,
+        allow_interactive: bool = True,
     ) -> None:
         self.client_secrets_file = Path(client_secrets_file)
         self.token_file = Path(token_file)
         self.scopes = list(scopes or ['https://www.googleapis.com/auth/calendar.readonly'])
         self.run_console = run_console
         self.local_server_port = local_server_port
+        self.allow_interactive = allow_interactive
 
     def _load_credentials_from_disk(self) -> Optional[Credentials]:
         if not self.token_file.exists():
@@ -63,6 +65,11 @@ class GoogleCalendarOAuth:
             self._persist_credentials(credentials)
             return credentials
 
+        if not self.allow_interactive:
+            raise RuntimeError(
+                'Credenziali OAuth2 non disponibili. Completa prima l\'autorizzazione tramite CLI.'
+            )
+
         LOGGER.info('Avvio del flusso OAuth2 per Google Calendar...')
         flow = InstalledAppFlow.from_client_secrets_file(
             str(self.client_secrets_file), scopes=self.scopes
@@ -73,6 +80,11 @@ class GoogleCalendarOAuth:
             credentials = flow.run_local_server(port=self.local_server_port or 0)
         self._persist_credentials(credentials)
         return credentials
+
+    def load_saved_credentials(self) -> Optional[Credentials]:
+        """Restituisce le credenziali salvate senza avviare flussi interattivi."""
+
+        return self._load_credentials_from_disk()
 
     def revoke(self) -> None:
         """Rimuove il file del token salvato."""

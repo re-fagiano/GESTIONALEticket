@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+{% block title %}Sincronizzazione Google Calendar{% endblock %}
+{% block content %}
+<h2>Sincronizzazione clienti da Google Calendar</h2>
+<p>
+    Usa questa pagina per avviare manualmente la lettura degli eventi del calendario
+    configurato e aggiornare l'anagrafica clienti del gestionale. Assicurati di avere
+    caricato il file di credenziali OAuth e di aver completato almeno una volta il
+    flusso di autorizzazione tramite CLI.
+</p>
+
+<section class="info">
+    <strong>Stato configurazione</strong>
+    <ul>
+        <li>File credenziali: {{ status.credentials_path }} {% if status.credentials_exists %}✅{% else %}❌{% endif %}</li>
+        <li>Token salvato: {{ status.token_path }} {% if status.token_exists %}✅{% else %}❌{% endif %}</li>
+        <li>Token valido: {% if status.token_valid %}sì{% else %}no{% endif %}{% if status.token_has_refresh %} (refresh disponibile){% endif %}</li>
+        <li>Scopi OAuth: {{ status.scopes | join(', ') }}</li>
+        {% if status.token_expiry %}
+            <li>Scadenza token: {{ status.token_expiry }}</li>
+        {% endif %}
+    </ul>
+    {% if not status.credentials_exists %}
+        <p>
+            Carica il file JSON scaricato da Google Cloud nella cartella
+            <code>instance/google_calendar_credentials.json</code> oppure aggiorna la
+            configurazione dell'applicazione con il percorso corretto.
+        </p>
+    {% elif not status.token_exists %}
+        <p>
+            Non è stato trovato un token salvato. Esegui il comando
+            <code>python -m jobs.sync_calendar_customers --local-server</code> (o senza
+            opzione per il flusso da console) per completare l'autorizzazione e
+            memorizzare il token da riutilizzare qui.
+        </p>
+    {% endif %}
+</section>
+
+<form method="post" class="calendar-sync-form">
+    <label for="calendar_id">ID calendario Google</label>
+    <input type="text" id="calendar_id" name="calendar_id" value="{{ form_values.calendar_id }}" placeholder="primary" />
+
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem;">
+        <div>
+            <label for="past_days">Giorni da analizzare nel passato</label>
+            <input type="number" id="past_days" name="past_days" min="0" value="{{ form_values.past_days }}" />
+        </div>
+        <div>
+            <label for="future_days">Giorni da analizzare nel futuro</label>
+            <input type="number" id="future_days" name="future_days" min="0" value="{{ form_values.future_days }}" />
+        </div>
+        <div>
+            <label for="max_results">Numero massimo di eventi</label>
+            <input type="number" id="max_results" name="max_results" min="1" value="{{ form_values.max_results }}" />
+        </div>
+    </div>
+
+    <button type="submit"{% if not status.credentials_exists or not status.token_exists %} disabled{% endif %}>
+        Avvia sincronizzazione
+    </button>
+</form>
+
+{% if stats %}
+    <section class="info" style="margin-top: 1.5rem;">
+        <strong>Risultato sincronizzazione</strong>
+        <ul>
+            <li>Calendario interrogato: {{ sync_details.calendar_id }}</li>
+            <li>Eventi letti: {{ sync_details.events_count }}</li>
+            <li>Clienti rilevati: {{ sync_details.candidates_count }}</li>
+            <li>Creati: {{ stats.created }} | Aggiornati: {{ stats.updated }} | Invariati: {{ stats.skipped }}</li>
+        </ul>
+        <p>
+            Intervallo analizzato: ultimi {{ sync_details.past_days }} giorni e prossimi
+            {{ sync_details.future_days }} giorni (max {{ sync_details.max_results }} eventi).
+        </p>
+    </section>
+{% endif %}
+{% endblock %}

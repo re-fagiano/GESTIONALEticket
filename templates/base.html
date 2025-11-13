@@ -201,12 +201,14 @@
 <header>
     <h1>Gestionale Ticket</h1>
     <nav>
-        {% for item in main_navigation %}
-            {% set is_active = request.endpoint == item.endpoint %}
-            <a href="{{ url_for(item.endpoint) }}"{% if is_active %} class="active"{% endif %}>{{ item.label }}</a>
-        {% endfor %}
+        <a href="{{ url_for('index') }}">Dashboard</a>
+        <a href="{{ url_for('customers') }}">Clienti</a>
+        <a href="{{ url_for('tickets') }}">Ticket</a>
+        <a href="{{ url_for('repairs') }}">Storico riparazioni</a>
+        <a href="{{ url_for('magazzino') }}">Magazzino</a>
         {% if current_user.is_authenticated and current_user.role == 'admin' %}
-            <a href="{{ url_for('admin_users') }}"{% if request.endpoint == 'admin_users' %} class="active"{% endif %}>Utenti</a>
+            <a href="{{ url_for('calendar_sync') }}">Google Calendar</a>
+            <a href="{{ url_for('admin_users') }}">Utenti</a>
         {% endif %}
     </nav>
     <div class="auth-links">
