@@ -57,6 +57,26 @@ REPAIR_STATUS_LABELS = {value: label for value, label in REPAIR_STATUSES}
 REPAIR_STATUS_VALUES = set(REPAIR_STATUS_LABELS)
 DEFAULT_REPAIR_STATUS = REPAIR_STATUSES[0][0]
 
+NAV_LINK_SPECS = [
+    {'endpoint': 'index', 'label': 'Dashboard'},
+    {'endpoint': 'customers', 'label': 'Clienti'},
+    {'endpoint': 'tickets', 'label': 'Ticket'},
+    {'endpoint': 'repairs', 'label': 'Storico riparazioni'},
+    {
+        'endpoint': 'magazzino',
+        'label': 'Magazzino',
+        'login_badge': 'Richiede login',
+        'admin_badge': 'Solo admin',
+    },
+    {
+        'endpoint': 'calendar_sync',
+        'label': 'Sync Google Calendar',
+        'login_badge': 'Richiede login',
+        'admin_badge': 'Solo admin',
+    },
+    {'endpoint': 'admin_users', 'label': 'Utenti', 'admin_only': True},
+]
+
 
 def _extract_openai_responses_text(data: dict) -> str:
     """Estrae il testo utile dalla risposta dell'endpoint /responses di OpenAI."""
@@ -291,6 +311,45 @@ def create_app(test_config: Optional[Mapping[str, Any]] = None) -> Flask:
     Path(app.config['UPLOAD_FOLDER']).mkdir(parents=True, exist_ok=True)
 
     login_manager.init_app(app)
+
+    def _build_navigation_links() -> List[dict]:
+        """Crea la struttura delle voci di menu principali."""
+
+        is_authenticated = current_user.is_authenticated
+        is_admin = is_authenticated and getattr(current_user, 'is_admin', False)
+        current_endpoint = request.endpoint or ''
+        links: List[dict] = []
+
+        for spec in NAV_LINK_SPECS:
+            if spec.get('admin_only') and not is_admin:
+                continue
+
+            try:
+                target_url = url_for(spec['endpoint'])
+            except BuildError:
+                continue
+
+            badge = None
+            if spec.get('login_badge') and not is_authenticated:
+                badge = spec['login_badge']
+            elif spec.get('admin_badge') and not is_admin:
+                badge = spec['admin_badge']
+
+            links.append(
+                {
+                    'endpoint': spec['endpoint'],
+                    'label': spec['label'],
+                    'url': target_url,
+                    'active': current_endpoint == spec['endpoint'],
+                    'badge': badge,
+                }
+            )
+
+        return links
+
+    @app.context_processor
+    def inject_navigation_links() -> Mapping[str, List[dict]]:
+        return {'navigation_links': _build_navigation_links()}
 
     # Chiude la connessione al database alla fine di ogni richiesta
     @app.teardown_appcontext

@@ -57,7 +57,6 @@
     <h1>Gestionale Ticket</h1>
     {% set is_authenticated = current_user.is_authenticated %}
     {% set is_admin = is_authenticated and current_user.role == 'admin' %}
-    {% set current_endpoint = request.endpoint or '' %}
     <nav class="main-nav">
         <a class="nav-link nav-link-dashboard{% if current_endpoint == 'index' %} active{% endif %}"
            href="{{ url_for('index') }}">Dashboard</a>
