@@ -59,17 +59,26 @@
     {% set is_admin = is_authenticated and current_user.role == 'admin' %}
     {% set current_endpoint = request.endpoint or '' %}
     <nav class="main-nav">
-        {% for item in main_navigation %}
-            <a class="nav-link{% if current_endpoint == item.endpoint %} active{% endif %}"
-               href="{{ url_for(item.endpoint) }}">
-                {{ item.label }}
-                {% if item.requires_login and not is_authenticated %}
-                    <span class="badge">Richiede login</span>
-                {% elif item.requires_admin and (not is_authenticated or not is_admin) %}
-                    <span class="badge">Solo admin</span>
-                {% endif %}
-            </a>
-        {% endfor %}
+        <a class="nav-link-dashboard" href="{{ url_for('index') }}">Dashboard</a>
+        <a class="nav-link-customers" href="{{ url_for('customers') }}">Clienti</a>
+        <a class="nav-link-tickets" href="{{ url_for('tickets') }}">Ticket</a>
+        <a class="nav-link-repairs" href="{{ url_for('repairs') }}">Storico riparazioni</a>
+        <a class="nav-link-magazzino" href="{{ url_for('magazzino') }}">
+            Magazzino
+            {% if not is_authenticated %}
+                <span class="badge">Richiede login</span>
+            {% elif not is_admin %}
+                <span class="badge">Solo admin</span>
+            {% endif %}
+        </a>
+        <a class="nav-link-calendar" href="{{ url_for('calendar_sync') }}">
+            Sync Google Calendar
+            {% if not is_authenticated %}
+                <span class="badge">Richiede login</span>
+            {% elif not is_admin %}
+                <span class="badge">Solo admin</span>
+            {% endif %}
+        </a>
         {% if is_authenticated and is_admin %}
             <a class="nav-link{% if current_endpoint == 'admin_users' %} active{% endif %}"
                href="{{ url_for('admin_users') }}">Utenti</a>
