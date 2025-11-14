@@ -58,15 +58,36 @@
     {% set is_authenticated = current_user.is_authenticated %}
     {% set is_admin = is_authenticated and current_user.role == 'admin' %}
     <nav class="main-nav">
-        {% for link in navigation_links %}
-            <a class="nav-link nav-link-{{ link.endpoint }}{% if link.active %} active{% endif %}"
-               href="{{ link.url }}">
-                {{ link.label }}
-                {% if link.badge %}
-                    <span class="badge">{{ link.badge }}</span>
-                {% endif %}
-            </a>
-        {% endfor %}
+        <a class="nav-link nav-link-dashboard{% if current_endpoint == 'index' %} active{% endif %}"
+           href="{{ url_for('index') }}">Dashboard</a>
+        <a class="nav-link nav-link-customers{% if current_endpoint == 'customers' %} active{% endif %}"
+           href="{{ url_for('customers') }}">Clienti</a>
+        <a class="nav-link nav-link-tickets{% if current_endpoint == 'tickets' %} active{% endif %}"
+           href="{{ url_for('tickets') }}">Ticket</a>
+        <a class="nav-link nav-link-repairs{% if current_endpoint == 'repairs' %} active{% endif %}"
+           href="{{ url_for('repairs') }}">Storico riparazioni</a>
+        <a class="nav-link nav-link-magazzino{% if current_endpoint == 'magazzino' %} active{% endif %}"
+           href="{{ url_for('magazzino') }}">
+            Magazzino
+            {% if not is_authenticated %}
+                <span class="badge">Richiede login</span>
+            {% elif not is_admin %}
+                <span class="badge">Solo admin</span>
+            {% endif %}
+        </a>
+        <a class="nav-link nav-link-calendar{% if current_endpoint == 'calendar_sync' %} active{% endif %}"
+           href="{{ url_for('calendar_sync') }}">
+            Sync Google Calendar
+            {% if not is_authenticated %}
+                <span class="badge">Richiede login</span>
+            {% elif not is_admin %}
+                <span class="badge">Solo admin</span>
+            {% endif %}
+        </a>
+        {% if is_authenticated and is_admin %}
+            <a class="nav-link nav-link-admin-users{% if current_endpoint == 'admin_users' %} active{% endif %}"
+               href="{{ url_for('admin_users') }}">Utenti</a>
+        {% endif %}
     </nav>
     <div class="auth-links">
         {% if is_authenticated %}

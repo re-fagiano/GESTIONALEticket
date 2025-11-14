@@ -35,7 +35,6 @@ from werkzeug.utils import secure_filename
 from services.customer_codes import generate_next_customer_code
 from services.calendar_sync import resolve_calendar_settings, run_calendar_sync
 from services.calendar_sync_scheduler import CalendarSyncScheduler
-from werkzeug.routing import BuildError
 
 
 TICKET_STATUSES = [
