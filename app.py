@@ -8,9 +8,8 @@ funzionalità per la gestione di clienti, ticket, riparazioni e magazzino.
 import os
 import sqlite3
 import uuid
-from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Iterable, List, Mapping, Optional, Sequence, Tuple
+from typing import Any, Iterable, List, Mapping, Optional, Tuple
 
 import requests
 from flask import (
@@ -34,8 +33,8 @@ from werkzeug.datastructures import FileStorage
 from werkzeug.utils import secure_filename
 
 from services.customer_codes import generate_next_customer_code
-from services.customer_sync import CustomerSyncService
-from services.google_calendar_client import GoogleCalendarClient
+from services.calendar_sync import resolve_calendar_settings, run_calendar_sync
+from services.calendar_sync_scheduler import CalendarSyncScheduler
 
 
 TICKET_STATUSES = [
@@ -119,47 +118,6 @@ def _coerce_int(value: Optional[str], default: int = 0) -> int:
         return default
 
 
-def _to_rfc3339(dt: datetime) -> str:
-    """Converte un ``datetime`` in formato RFC3339 (UTC)."""
-
-    if dt.tzinfo is None:
-        dt = dt.replace(tzinfo=timezone.utc)
-    else:
-        dt = dt.astimezone(timezone.utc)
-    return dt.isoformat().replace('+00:00', 'Z')
-
-
-def _parse_calendar_scopes(raw: Optional[Sequence[str] | str]) -> List[str]:
-    """Normalizza gli scope configurati per Google Calendar."""
-
-    if raw is None:
-        return ['https://www.googleapis.com/auth/calendar.readonly']
-    if isinstance(raw, (list, tuple, set)):
-        scopes = [str(scope).strip() for scope in raw if str(scope).strip()]
-    else:
-        scopes = [scope.strip() for scope in str(raw).split(',') if scope.strip()]
-    return scopes or ['https://www.googleapis.com/auth/calendar.readonly']
-
-
-def _resolve_calendar_settings(app: Flask) -> dict:
-    """Restituisce percorsi e impostazioni per l'integrazione Google Calendar."""
-
-    credentials_path = Path(
-        app.config.get('GOOGLE_CALENDAR_CREDENTIALS_FILE')
-        or (Path(app.instance_path) / 'google_calendar_credentials.json')
-    )
-    token_path = Path(
-        app.config.get('GOOGLE_CALENDAR_TOKEN_FILE')
-        or (Path(app.instance_path) / 'google_calendar_token.json')
-    )
-    scopes = _parse_calendar_scopes(app.config.get('GOOGLE_CALENDAR_SCOPES'))
-    calendar_id = app.config.get('GOOGLE_CALENDAR_ID') or 'primary'
-    return {
-        'credentials_path': credentials_path,
-        'token_path': token_path,
-        'scopes': scopes,
-        'calendar_id': calendar_id,
-    }
 def _build_ai_prompts(
     system_prompt: Optional[str],
     subject: str,
@@ -285,6 +243,12 @@ def create_app(test_config: Optional[Mapping[str, Any]] = None) -> Flask:
         GOOGLE_CALENDAR_TOKEN_FILE=str(Path(app.instance_path) / 'google_calendar_token.json'),
         GOOGLE_CALENDAR_SCOPES='https://www.googleapis.com/auth/calendar.readonly',
         GOOGLE_CALENDAR_ID='primary',
+        GOOGLE_CALENDAR_AUTO_SYNC_ENABLED=False,
+        GOOGLE_CALENDAR_AUTO_SYNC_INTERVAL=3600,
+        GOOGLE_CALENDAR_AUTO_SYNC_PAST_DAYS=30,
+        GOOGLE_CALENDAR_AUTO_SYNC_FUTURE_DAYS=7,
+        GOOGLE_CALENDAR_AUTO_SYNC_MAX_RESULTS=250,
+        GOOGLE_CALENDAR_AUTO_SYNC_CALENDAR_ID=None,
     )
 
     # Consente di sovrascrivere i valori tramite instance/config.py
@@ -337,6 +301,22 @@ def create_app(test_config: Optional[Mapping[str, Any]] = None) -> Flask:
     # In Flask 3.x il decorator before_first_request non è più disponibile.
     with app.app_context():
         init_db()
+
+    if app.config.get('GOOGLE_CALENDAR_AUTO_SYNC_ENABLED'):
+        interval = _coerce_int(app.config.get('GOOGLE_CALENDAR_AUTO_SYNC_INTERVAL'), 3600)
+        past_days = _coerce_int(app.config.get('GOOGLE_CALENDAR_AUTO_SYNC_PAST_DAYS'), 30)
+        future_days = _coerce_int(app.config.get('GOOGLE_CALENDAR_AUTO_SYNC_FUTURE_DAYS'), 7)
+        max_results = _coerce_int(app.config.get('GOOGLE_CALENDAR_AUTO_SYNC_MAX_RESULTS'), 250)
+        scheduler = CalendarSyncScheduler(
+            app,
+            interval_seconds=max(interval, 60),
+            past_days=past_days,
+            future_days=future_days,
+            max_results=max(max_results, 1),
+            calendar_id=app.config.get('GOOGLE_CALENDAR_AUTO_SYNC_CALENDAR_ID'),
+        )
+        scheduler.start()
+        app.extensions['calendar_sync_scheduler'] = scheduler
 
     app.register_blueprint(auth_bp)
 
@@ -640,7 +620,7 @@ def create_app(test_config: Optional[Mapping[str, Any]] = None) -> Flask:
     @app.route('/admin/calendar-sync', methods=['GET', 'POST'])
     @admin_required
     def calendar_sync():
-        settings = _resolve_calendar_settings(app)
+        settings = resolve_calendar_settings(app)
         calendar_id = settings['calendar_id']
         oauth = GoogleCalendarOAuth(
             settings['credentials_path'],
@@ -695,28 +675,16 @@ def create_app(test_config: Optional[Mapping[str, Any]] = None) -> Flask:
                     'error',
                 )
             else:
-                client = GoogleCalendarClient(oauth, calendar_id=calendar_id)
-                now = datetime.now(timezone.utc)
-                time_min = _to_rfc3339(now - timedelta(days=past_days))
-                time_max = _to_rfc3339(now + timedelta(days=future_days))
-
                 try:
-                    events = client.fetch_events(
-                        time_min=time_min,
-                        time_max=time_max,
+                    stats, sync_details = run_calendar_sync(
+                        db=get_db(),
+                        oauth=oauth,
+                        calendar_id=calendar_id,
+                        past_days=past_days,
+                        future_days=future_days,
                         max_results=max_results,
+                        logger=app.logger,
                     )
-                    candidates = client.extract_customers(events)
-                    sync_service = CustomerSyncService(get_db(), logger=app.logger)
-                    stats = sync_service.sync_candidates(candidates)
-                    sync_details = {
-                        'calendar_id': calendar_id,
-                        'events_count': len(events),
-                        'candidates_count': len(candidates),
-                        'past_days': past_days,
-                        'future_days': future_days,
-                        'max_results': max_results,
-                    }
                     flash(
                         'Sincronizzazione completata: '
                         f"{stats['created']} creati, {stats['updated']} aggiornati, {stats['skipped']} invariati.",
