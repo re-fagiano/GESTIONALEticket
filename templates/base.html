@@ -9,17 +9,16 @@
         header { background: #2d6cdf; color: white; padding: 1rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; }
         header h1 { margin: 0; }
         nav { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; }
-        nav a {
+        nav a.nav-link {
             color: white;
             text-decoration: none;
             font-weight: 600;
             padding: 0.25rem 0.4rem;
             border-radius: 4px;
+            background: rgba(255, 255, 255, 0.05);
         }
-        nav a.nav-link-magazzino,
-        nav a.nav-link-calendar { background: rgba(255, 255, 255, 0.1); }
-        nav a.nav-link-magazzino:hover,
-        nav a.nav-link-calendar:hover { background: rgba(255, 255, 255, 0.25); }
+        nav a.nav-link:hover { background: rgba(255, 255, 255, 0.25); }
+        nav a.nav-link.active { background: rgba(255, 255, 255, 0.35); }
         .auth-links { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; font-size: 0.9rem; }
         .auth-links a { color: white; text-decoration: underline; }
         .auth-links span { opacity: 0.85; }
@@ -58,6 +57,7 @@
     <h1>Gestionale Ticket</h1>
     {% set is_authenticated = current_user.is_authenticated %}
     {% set is_admin = is_authenticated and current_user.role == 'admin' %}
+    {% set current_endpoint = request.endpoint or '' %}
     <nav class="main-nav">
         <a class="nav-link-dashboard" href="{{ url_for('index') }}">Dashboard</a>
         <a class="nav-link-customers" href="{{ url_for('customers') }}">Clienti</a>
@@ -80,7 +80,8 @@
             {% endif %}
         </a>
         {% if is_authenticated and is_admin %}
-            <a class="nav-link-admin-users" href="{{ url_for('admin_users') }}">Utenti</a>
+            <a class="nav-link{% if current_endpoint == 'admin_users' %} active{% endif %}"
+               href="{{ url_for('admin_users') }}">Utenti</a>
         {% endif %}
     </nav>
     <div class="auth-links">

@@ -345,12 +345,17 @@ def create_app(test_config: Optional[Mapping[str, Any]] = None) -> Flask:
         """Rende disponibile l'elenco delle voci di navigazione principali."""
 
         items = [
-            {"endpoint": "index", "label": "Dashboard"},
-            {"endpoint": "customers", "label": "Clienti"},
-            {"endpoint": "tickets", "label": "Ticket"},
-            {"endpoint": "repairs", "label": "Storico riparazioni"},
-            {"endpoint": "magazzino", "label": "Magazzino"},
-            {"endpoint": "calendar_sync", "label": "Google Calendar"},
+            {"endpoint": "index", "label": "Dashboard", "requires_login": True},
+            {"endpoint": "customers", "label": "Clienti", "requires_login": True},
+            {"endpoint": "tickets", "label": "Ticket", "requires_login": True},
+            {"endpoint": "repairs", "label": "Storico riparazioni", "requires_login": True},
+            {"endpoint": "magazzino", "label": "Magazzino", "requires_login": True},
+            {
+                "endpoint": "calendar_sync",
+                "label": "Sync Google Calendar",
+                "requires_login": True,
+                "requires_admin": True,
+            },
         ]
 
         return {"main_navigation": items}
