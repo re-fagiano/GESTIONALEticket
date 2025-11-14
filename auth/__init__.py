@@ -6,8 +6,8 @@ from functools import wraps
 from typing import Optional
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for
-from flask_login import (LoginManager, UserMixin, current_user, login_required,
-                         login_user, logout_user)
+from flask_login import (AnonymousUserMixin, LoginManager, UserMixin,
+                         current_user, login_required, login_user, logout_user)
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from database import get_db
@@ -17,13 +17,31 @@ login_manager = LoginManager()
 login_manager.login_view = 'auth.login'
 
 
+class AnonymousUser(AnonymousUserMixin):
+    role = None
+
+    @property
+    def is_admin(self) -> bool:  # pragma: no cover - trivially False
+        return False
+
+
+login_manager.anonymous_user = AnonymousUser
+
+
+def _normalize_role(role: Optional[str]) -> str:
+    """Restituisce il ruolo normalizzato (case-insensitive)."""
+
+    normalized = (role or '').strip().lower()
+    return normalized or 'user'
+
+
 class User(UserMixin):
     """Semplice rappresentazione dell'utente per Flask-Login."""
 
-    def __init__(self, user_id: int, username: str, role: str) -> None:
+    def __init__(self, user_id: int, username: str, role: Optional[str]) -> None:
         self.id = str(user_id)
         self.username = username
-        self.role = role
+        self.role = _normalize_role(role)
 
     @property
     def is_admin(self) -> bool:
@@ -117,7 +135,7 @@ def register():
     # verifica se esiste almeno un amministratore
     admin_exists = bool(
         db.execute(
-            "SELECT 1 FROM users WHERE role = 'admin' LIMIT 1"
+            "SELECT 1 FROM users WHERE LOWER(role) = 'admin' LIMIT 1"
         ).fetchone()
     )
 
@@ -133,7 +151,7 @@ def register():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '')
-        role = request.form.get('role', 'user')
+        role = _normalize_role(request.form.get('role', 'user'))
 
         errors = []
         if not username:

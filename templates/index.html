@@ -14,7 +14,7 @@
     <a class="button" href="{{ url_for('magazzino') }}">Magazzino</a>
 </p>
 
-{% if current_user.is_authenticated and current_user.role == 'admin' %}
+{% if current_user.is_authenticated and current_user.is_admin %}
 <section class="info" style="margin-top: 1.5rem;">
     <h3 style="margin-top: 0;">Sincronizzazione Google Calendar</h3>
     <p style="margin-bottom: 0.75rem;">

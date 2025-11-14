@@ -460,7 +460,7 @@ def create_app(test_config: Optional[Mapping[str, Any]] = None) -> Flask:
 
         # Gestione delle modifiche inviate tramite form.
         if request.method == 'POST':
-            if current_user.role != 'admin':
+            if not getattr(current_user, 'is_admin', False):
                 abort(403)
 
             action = (request.form.get('action') or '').strip().lower()

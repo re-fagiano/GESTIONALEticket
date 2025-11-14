@@ -104,7 +104,7 @@
         <a class="button secondary" href="{{ url_for('magazzino') }}">Azzera</a>
     {% endif %}
 </form>
-{% set is_admin = current_user.is_authenticated and current_user.role == 'admin' %}
+{% set is_admin = current_user.is_admin if current_user.is_authenticated else False %}
 {% if is_admin %}
 <div class="inventory-layout">
     <div class="inventory-card">
