@@ -631,10 +631,10 @@ def create_app(test_config: Optional[Mapping[str, Any]] = None) -> Flask:
         ).fetchall()
         return render_template('admin_users.html', users=users)
 
-    @app.route('/calendar/google', methods=['GET', 'POST'])
-    @login_required
+    @app.route('/calendar/google', methods=['GET', 'POST'], endpoint='calendar_sync_legacy')
+    @app.route('/admin/calendar-sync', methods=['GET', 'POST'])
+    @admin_required
     def calendar_sync():
-        can_manage = current_user.role == 'admin'
         settings = _resolve_calendar_settings(app)
         calendar_id = settings['calendar_id']
         oauth = GoogleCalendarOAuth(
@@ -671,8 +671,6 @@ def create_app(test_config: Optional[Mapping[str, Any]] = None) -> Flask:
         sync_details = None
 
         if request.method == 'POST':
-            if not can_manage:
-                abort(403)
             calendar_id = (request.form.get('calendar_id') or '').strip() or calendar_id
             past_days = max(_coerce_int(request.form.get('past_days'), 30), 0)
             future_days = max(_coerce_int(request.form.get('future_days'), 7), 0)
@@ -742,7 +740,7 @@ def create_app(test_config: Optional[Mapping[str, Any]] = None) -> Flask:
             form_values=form_values,
             stats=stats,
             sync_details=sync_details,
-            can_manage_calendar=can_manage,
+            can_manage_calendar=True,
         )
 
     @app.route('/admin/users/<int:user_id>/promote', methods=['POST'])

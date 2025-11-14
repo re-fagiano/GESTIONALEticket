@@ -63,9 +63,6 @@
         <a class="nav-link-customers" href="{{ url_for('customers') }}">Clienti</a>
         <a class="nav-link-tickets" href="{{ url_for('tickets') }}">Ticket</a>
         <a class="nav-link-repairs" href="{{ url_for('repairs') }}">Storico riparazioni</a>
-    </nav>
-
-    <nav class="services-nav">
         <a class="nav-link-magazzino" href="{{ url_for('magazzino') }}">
             Magazzino
             {% if not is_authenticated %}
@@ -75,7 +72,7 @@
             {% endif %}
         </a>
         <a class="nav-link-calendar" href="{{ url_for('calendar_sync') }}">
-            Google Calendar
+            Sync Google Calendar
             {% if not is_authenticated %}
                 <span class="badge">Richiede login</span>
             {% elif not is_admin %}
