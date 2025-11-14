@@ -116,6 +116,11 @@ Al primo avvio verrà creato automaticamente `instance/google_calendar_token.jso
 | `GOOGLE_CALENDAR_SCOPES` | Scopes OAuth richiesti, separati da virgole | `https://www.googleapis.com/auth/calendar.readonly` |
 | `GOOGLE_CALENDAR_CREDENTIALS_FILE` | Percorso del file di credenziali OAuth | `instance/google_calendar_credentials.json` |
 | `GOOGLE_CALENDAR_TOKEN_FILE` | Percorso del token memorizzato localmente | `instance/google_calendar_token.json` |
+| `GOOGLE_CALENDAR_AUTO_SYNC_ENABLED` | Se impostato a `True` avvia la sincronizzazione automatica in background | `False` |
+| `GOOGLE_CALENDAR_AUTO_SYNC_INTERVAL` | Intervallo (in secondi) tra due esecuzioni automatiche | `3600` |
+| `GOOGLE_CALENDAR_AUTO_SYNC_PAST_DAYS` / `FUTURE_DAYS` | Giorni analizzati prima/dopo la data odierna durante l'esecuzione automatica | `30` / `7` |
+| `GOOGLE_CALENDAR_AUTO_SYNC_MAX_RESULTS` | Numero massimo di eventi letti dal calendario nel job automatico | `250` |
+| `GOOGLE_CALENDAR_AUTO_SYNC_CALENDAR_ID` | (Opzionale) ID calendario specifico da usare solo per l'auto‑sync | `None` (usa `GOOGLE_CALENDAR_ID`) |
 
 Puoi definire gli stessi valori anche in `instance/config.py`.
 
@@ -138,6 +143,22 @@ Dopo aver completato almeno una volta l'autorizzazione OAuth (in modo che venga 
 3. Premi **Avvia sincronizzazione** per scaricare gli eventi e aggiornare l'anagrafica clienti.
 
 La pagina mostra anche lo stato della configurazione (presenza delle credenziali e del token, scadenza, scope attivi) e disabilita il pulsante se manca qualcuno di questi requisiti.
+
+### Sincronizzazione automatica in background
+
+Se desideri evitare l'avvio manuale del job puoi abilitare un piccolo scheduler incorporato che esegue periodicamente la sincronizzazione nello stesso processo Flask. Aggiungi queste variabili d'ambiente (o le stesse chiavi in `instance/config.py`):
+
+```bash
+export GOOGLE_CALENDAR_AUTO_SYNC_ENABLED=True
+export GOOGLE_CALENDAR_AUTO_SYNC_INTERVAL=900          # esegui ogni 15 minuti
+export GOOGLE_CALENDAR_AUTO_SYNC_PAST_DAYS=60
+export GOOGLE_CALENDAR_AUTO_SYNC_FUTURE_DAYS=14
+export GOOGLE_CALENDAR_AUTO_SYNC_MAX_RESULTS=500
+# opzionale: usa un calendario dedicato
+# export GOOGLE_CALENDAR_AUTO_SYNC_CALENDAR_ID="assistenza@example.com"
+```
+
+Al riavvio del server Flask partirà un thread dedicato che, dopo aver verificato la presenza delle credenziali OAuth, importerà clienti a intervalli regolari utilizzando gli stessi criteri della pagina di amministrazione. Il processo è non interattivo: assicurati di avere già eseguito almeno una volta lo script `python -m jobs.sync_calendar_customers --local-server` per generare il token (`instance/google_calendar_token.json`).
 
 ### Payload per servizi personalizzati
 
