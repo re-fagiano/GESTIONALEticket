@@ -5,6 +5,7 @@ connessione al database tramite le funzioni di ``database.py`` e fornisce
 funzionalità per la gestione di clienti, ticket, riparazioni e magazzino.
 """
 
+import json
 import os
 import sqlite3
 import uuid
@@ -715,56 +716,107 @@ def create_app(test_config: Optional[Mapping[str, Any]] = None) -> Flask:
         sync_details = None
 
         if request.method == 'POST':
-            calendar_id = (request.form.get('calendar_id') or '').strip() or calendar_id
-            past_days = max(_coerce_int(request.form.get('past_days'), 30), 0)
-            future_days = max(_coerce_int(request.form.get('future_days'), 7), 0)
-            max_results = max(_coerce_int(request.form.get('max_results'), 250), 1)
-            form_values.update(
-                {
-                    'calendar_id': calendar_id,
-                    'past_days': past_days,
-                    'future_days': future_days,
-                    'max_results': max_results,
-                }
-            )
+            action = (request.form.get('action') or 'run_sync').strip().lower()
+            status_needs_refresh = False
 
-            if not status['credentials_exists']:
-                flash(
-                    'Carica prima il file di credenziali OAuth in "instance/google_calendar_credentials.json".',
-                    'error',
+            if action == 'save_credentials':
+                raw_credentials = (request.form.get('credentials_json') or '').strip()
+                if not raw_credentials:
+                    flash('Incolla il contenuto JSON delle credenziali prima di salvare.', 'error')
+                else:
+                    try:
+                        credentials_data = json.loads(raw_credentials)
+                    except json.JSONDecodeError:
+                        flash('Il testo fornito non è un JSON valido.', 'error')
+                    else:
+                        settings['credentials_path'].parent.mkdir(parents=True, exist_ok=True)
+                        settings['credentials_path'].write_text(
+                            json.dumps(
+                                credentials_data,
+                                indent=2,
+                                ensure_ascii=False,
+                                sort_keys=True,
+                            ),
+                            encoding='utf-8',
+                        )
+                        flash('File di credenziali Google Calendar aggiornato.', 'success')
+                        status_needs_refresh = True
+
+            elif action == 'save_token':
+                raw_token = (request.form.get('token_json') or '').strip()
+                if not raw_token:
+                    flash('Incolla il contenuto JSON del token prima di salvare.', 'error')
+                else:
+                    try:
+                        token_data = json.loads(raw_token)
+                    except json.JSONDecodeError:
+                        flash('Il testo fornito non è un JSON valido.', 'error')
+                    else:
+                        settings['token_path'].parent.mkdir(parents=True, exist_ok=True)
+                        settings['token_path'].write_text(
+                            json.dumps(
+                                token_data,
+                                indent=2,
+                                ensure_ascii=False,
+                                sort_keys=True,
+                            ),
+                            encoding='utf-8',
+                        )
+                        flash('Token OAuth salvato correttamente.', 'success')
+                        status_needs_refresh = True
+
+            elif action == 'run_sync':
+                calendar_id = (request.form.get('calendar_id') or '').strip() or calendar_id
+                past_days = max(_coerce_int(request.form.get('past_days'), 30), 0)
+                future_days = max(_coerce_int(request.form.get('future_days'), 7), 0)
+                max_results = max(_coerce_int(request.form.get('max_results'), 250), 1)
+                form_values.update(
+                    {
+                        'calendar_id': calendar_id,
+                        'past_days': past_days,
+                        'future_days': future_days,
+                        'max_results': max_results,
+                    }
                 )
-            else:
-                try:
-                    stats, sync_details = run_calendar_sync(
-                        db=get_db(),
-                        oauth=oauth,
-                        calendar_id=calendar_id,
-                        past_days=past_days,
-                        future_days=future_days,
-                        max_results=max_results,
-                        logger=app.logger,
-                    )
+
+                if not status['credentials_exists'] or not status['token_exists']:
                     flash(
-                        'Sincronizzazione completata: '
-                        f"{stats['created']} creati, {stats['updated']} aggiornati, {stats['skipped']} invariati.",
-                        'success',
-                    )
-                except RuntimeError as exc:
-                    flash(str(exc), 'error')
-                except Exception as exc:  # pragma: no cover - error path dipende da Google
-                    app.logger.exception(
-                        'Errore durante la sincronizzazione con Google Calendar.',
-                        exc_info=exc,
-                    )
-                    flash(
-                        'Si è verificato un errore durante la sincronizzazione dal calendario. '
-                        'Controlla i log per maggiori dettagli.',
+                        'Completa prima il caricamento di credenziali e token OAuth per avviare la sincronizzazione.',
                         'error',
                     )
+                else:
+                    try:
+                        stats, sync_details = run_calendar_sync(
+                            db=get_db(),
+                            oauth=oauth,
+                            calendar_id=calendar_id,
+                            past_days=past_days,
+                            future_days=future_days,
+                            max_results=max_results,
+                            logger=app.logger,
+                        )
+                        flash(
+                            'Sincronizzazione completata: '
+                            f"{stats['created']} creati, {stats['updated']} aggiornati, {stats['skipped']} invariati.",
+                            'success',
+                        )
+                    except RuntimeError as exc:
+                        flash(str(exc), 'error')
+                    except Exception as exc:  # pragma: no cover - error path dipende da Google
+                        app.logger.exception(
+                            'Errore durante la sincronizzazione con Google Calendar.',
+                            exc_info=exc,
+                        )
+                        flash(
+                            'Si è verificato un errore durante la sincronizzazione dal calendario. '
+                            'Controlla i log per maggiori dettagli.',
+                            'error',
+                        )
 
-            saved_credentials = oauth.load_saved_credentials()
-            status = _build_status(saved_credentials)
-            status['calendar_id'] = calendar_id
+            if status_needs_refresh:
+                saved_credentials = oauth.load_saved_credentials()
+                status = _build_status(saved_credentials)
+                status['calendar_id'] = calendar_id
 
         return render_template(
             'calendar_sync.html',
