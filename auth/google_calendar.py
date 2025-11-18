@@ -74,10 +74,9 @@ class GoogleCalendarOAuth:
         flow = InstalledAppFlow.from_client_secrets_file(
             str(self.client_secrets_file), scopes=self.scopes
         )
-        if self.run_console:
-            credentials = flow.run_console()
-        else:
-            credentials = flow.run_local_server(port=self.local_server_port or 0)
+        # run_console è stato rimosso nelle versioni recenti di google-auth-oauthlib,
+        # usiamo sempre il flusso con server locale.
+        credentials = flow.run_local_server(port=self.local_server_port or 0)
         self._persist_credentials(credentials)
         return credentials
 
