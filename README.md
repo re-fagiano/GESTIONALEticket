@@ -144,6 +144,8 @@ Dopo aver completato almeno una volta l'autorizzazione OAuth (in modo che venga 
 
 La pagina mostra anche lo stato della configurazione (presenza delle credenziali e del token, scadenza, scope attivi) e disabilita il pulsante se manca qualcuno di questi requisiti.
 
+Se non hai accesso diretto alla console del server puoi incollare nella stessa pagina il contenuto dei file `google_calendar_credentials.json` e `google_calendar_token.json`: verranno salvati automaticamente nelle posizioni configurate e saranno subito disponibili per avviare la sincronizzazione con un solo click.
+
 ### Sincronizzazione automatica in background
 
 Se desideri evitare l'avvio manuale del job puoi abilitare un piccolo scheduler incorporato che esegue periodicamente la sincronizzazione nello stesso processo Flask. Aggiungi queste variabili d'ambiente (o le stesse chiavi in `instance/config.py`):

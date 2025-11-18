@@ -21,22 +21,47 @@
     </ul>
     {% if not status.credentials_exists %}
         <p>
-            Carica il file JSON scaricato da Google Cloud nella cartella
-            <code>instance/google_calendar_credentials.json</code> oppure aggiorna la
-            configurazione dell'applicazione con il percorso corretto.
+            Carica il file JSON scaricato da Google Cloud incollandolo nel modulo
+            <em>JSON credenziali OAuth</em> qui sotto: verrà salvato in
+            <code>{{ status.credentials_path }}</code> e riutilizzato automaticamente.
         </p>
     {% elif not status.token_exists %}
         <p>
-            Non è stato trovato un token salvato. Esegui il comando
-            <code>python -m jobs.sync_calendar_customers --local-server</code> (o senza
-            opzione per il flusso da console) per completare l'autorizzazione e
-            memorizzare il token da riutilizzare qui.
+            Non è stato trovato un token salvato. Se hai già completato il flusso OAuth
+            altrove, incolla il JSON nel modulo <em>JSON token salvato</em> qui sotto.
+            In alternativa esegui il comando
+            <code>python -m jobs.sync_calendar_customers --local-server</code> per
+            generare un nuovo token e poi incollane il contenuto.
         </p>
     {% endif %}
 </section>
 
 {% if can_manage_calendar %}
-<form method="post" class="calendar-sync-form">
+<section class="info" style="margin-top: 1.5rem;">
+    <strong>Carica configurazione OAuth senza console</strong>
+    <p>
+        Se non puoi accedere alla console del server incolla qui sotto il contenuto dei file
+        JSON generati da Google Cloud. Verranno salvati automaticamente nelle posizioni
+        configurate e saranno riutilizzati per le sincronizzazioni future.
+    </p>
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem;">
+        <form method="post">
+            <input type="hidden" name="action" value="save_credentials" />
+            <label for="credentials_json">JSON credenziali OAuth</label>
+            <textarea id="credentials_json" name="credentials_json" rows="8" placeholder="{ &quot;installed&quot;: { ... } }"></textarea>
+            <button type="submit">Salva credenziali</button>
+        </form>
+        <form method="post">
+            <input type="hidden" name="action" value="save_token" />
+            <label for="token_json">JSON token salvato</label>
+            <textarea id="token_json" name="token_json" rows="8" placeholder="{ &quot;token&quot;: &quot;ya29...&quot; }"></textarea>
+            <button type="submit">Salva token</button>
+        </form>
+    </div>
+</section>
+
+<form method="post" class="calendar-sync-form" style="margin-top: 1.5rem;">
+    <input type="hidden" name="action" value="run_sync" />
     <label for="calendar_id">ID calendario Google</label>
     <input type="text" id="calendar_id" name="calendar_id" value="{{ form_values.calendar_id }}" placeholder="primary" />
 
