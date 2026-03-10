@@ -6,6 +6,8 @@ funzionalità per la gestione di clienti, ticket, riparazioni e magazzino.
 """
 
 import json
+import csv
+import io
 import os
 import sqlite3
 import uuid
@@ -665,6 +667,66 @@ def create_app(test_config: Optional[Mapping[str, Any]] = None) -> Flask:
             edit_item=edit_item,
             low_stock_ids=low_stock_ids,
             total_quantity=total_quantity,
+        )
+
+    @app.route('/magazzino/export', methods=['GET'])
+    @login_required
+    def export_magazzino():
+        db = get_db()
+        search_query = (request.args.get('q') or '').strip()
+
+        params: List[str] = []
+        query = (
+            'SELECT code, name, quantity, minimum_quantity, location, category, '
+            'description, notes, created_at, updated_at '
+            'FROM inventory_items'
+        )
+        if search_query:
+            like = f'%{search_query}%'
+            query += (
+                ' WHERE code LIKE ? OR name LIKE ? OR '
+                'IFNULL(description, "") LIKE ? OR IFNULL(location, "") LIKE ? OR '
+                'IFNULL(category, "") LIKE ? OR IFNULL(notes, "") LIKE ?'
+            )
+            params.extend([like, like, like, like, like, like])
+        query += ' ORDER BY LOWER(name), LOWER(code)'
+
+        rows = db.execute(query, params).fetchall()
+
+        output = io.StringIO()
+        writer = csv.writer(output, delimiter=';')
+        writer.writerow([
+            'Codice',
+            'Nome',
+            'Quantità',
+            'Scorta minima',
+            'Posizione',
+            'Categoria',
+            'Descrizione',
+            'Note',
+            'Creato il',
+            'Aggiornato il',
+        ])
+        for row in rows:
+            writer.writerow([
+                row['code'],
+                row['name'],
+                row['quantity'],
+                row['minimum_quantity'],
+                row['location'] or '',
+                row['category'] or '',
+                row['description'] or '',
+                row['notes'] or '',
+                row['created_at'] or '',
+                row['updated_at'] or '',
+            ])
+
+        csv_bytes = io.BytesIO(output.getvalue().encode('utf-8-sig'))
+        return send_file(
+            csv_bytes,
+            mimetype='text/csv; charset=utf-8',
+            as_attachment=True,
+            download_name='magazzino.csv',
         )
 
     @app.route('/admin/users')
