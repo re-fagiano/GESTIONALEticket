@@ -23,6 +23,41 @@ def test_magazzino_available_for_admin(client, login):
     assert b'Nuovo articolo' in response.data
 
 
+def test_magazzino_export_csv_requires_authentication(client):
+    response: Response = client.get('/magazzino/export')
+    assert response.status_code == 302
+    assert '/auth/login' in response.headers.get('Location', '')
+
+
+def test_magazzino_export_csv_includes_items_and_filter(client, app, login):
+    login('admin', 'adminpass')
+    with app.app_context():
+        db = get_db()
+        db.execute(
+            'INSERT INTO inventory_items (code, name, quantity, minimum_quantity, location, category, description, notes) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            ('ABC-001', 'Alimentatore', 5, 2, 'A1', 'Ricambi', '65W USB-C', 'Test export'),
+        )
+        db.execute(
+            'INSERT INTO inventory_items (code, name, quantity, minimum_quantity, location, category, description, notes) '
+            'VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            ('XYZ-999', 'Mouse', 10, 1, 'B2', 'Periferiche', 'Wireless', 'Non filtrato'),
+        )
+        db.commit()
+
+    response: Response = client.get('/magazzino/export?q=ABC')
+    assert response.status_code == 200
+    assert response.mimetype == 'text/csv'
+    disposition = response.headers.get('Content-Disposition', '')
+    assert 'attachment' in disposition
+    assert 'magazzino.csv' in disposition
+
+    body = response.get_data(as_text=True)
+    assert 'Codice;Nome;Quantità;Scorta minima' in body
+    assert 'ABC-001;Alimentatore;5;2;A1;Ricambi;65W USB-C;Test export' in body
+    assert 'XYZ-999;Mouse' not in body
+
+
 def test_navigation_shows_magazzino_and_calendar_links(client):
     response: Response = client.get('/auth/login')
     assert response.status_code == 200
